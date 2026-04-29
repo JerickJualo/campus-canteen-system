@@ -48,11 +48,12 @@
             <th>Min Stock</th>
             <th>Status</th>
             <th>Actions</th>
+            <th></th>
         </tr>
     </thead>
     <tbody>
         {% for item in items %}
-        <tr>
+        <tr {% if item.pk in low_stock_items %}style="background: #fff3cd;"{% endif %}>
             <td>{{ item.item_name }}</td>
             <td>{{ item.category }}</td>
             <td>₱{{ item.unit_price }}</td>
@@ -61,7 +62,13 @@
             <td>{{ item.status }}</td>
             <td>
                 <a href="{% url 'edit_inventory_item' item.pk %}" style="color: #28a745; font-weight: bold; margin-right: 8px;">Edit</a>
-                <a href="{% url 'delete_inventory_item' item.pk %}" style="color: orange; font-weight: bold;">Delete</a>
+                <a href="{% url 'delete_inventory_item' item.pk %}" style="color: orange; font-weight: bold; margin-right: 8px;">Delete</a>
+                <a href="{% url 'restock_inventory_item' item.pk %}" style="color: #007bff; font-weight: bold;">Restock</a>
+            </td>
+            <td>
+                {% if item.pk in low_stock_items %}
+                    <span style="color: orange; font-weight: bold;">Low Stock!</span>
+                {% endif %}
             </td>
         </tr>
         {% empty %}
