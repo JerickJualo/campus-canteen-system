@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .inventory-title {
+        color: orange;
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+    .add-btn {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 0.5rem 1.2rem;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: bold;
+        margin-bottom: 1rem;
+        display: inline-block;
+    }
+    .add-btn:hover {
+        background-color: #218838;
+    }
+    .inventory-table {
+        width: 100%;
+        background: white;
+        border-collapse: collapse;
+        margin-bottom: 2rem;
+    }
+    .inventory-table th, .inventory-table td {
+        border: 1px solid #ddd;
+        padding: 0.6rem;
+        text-align: left;
+    }
+    .inventory-table th {
+        background: #f8f9fa;
+    }
+</style>
+<div class="inventory-title">Inventory List</div>
+<a href="{% url 'add_inventory_item' %}" class="add-btn">+ Add Item</a>
+<table class="inventory-table">
+    <thead>
+        <tr>
+            <th>Item Name</th>
+            <th>Category</th>
+            <th>Unit Price</th>
+            <th>Quantity</th>
+            <th>Min Stock</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item.item_name }}</td>
+            <td>{{ item.category }}</td>
+            <td>₱{{ item.unit_price }}</td>
+            <td>{{ item.quantity_in_stock }}</td>
+            <td>{{ item.minimum_stock_level }}</td>
+            <td>{{ item.status }}</td>
+            <td>
+                <a href="{% url 'edit_inventory_item' item.pk %}" style="color: #28a745; font-weight: bold; margin-right: 8px;">Edit</a>
+                <a href="{% url 'delete_inventory_item' item.pk %}" style="color: orange; font-weight: bold;">Delete</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">No items in inventory.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

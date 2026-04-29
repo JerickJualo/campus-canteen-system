@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .inventory-title {
+        color: orange;
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+    .form-container {
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    .submit-btn {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 0.5rem 1.2rem;
+        border-radius: 4px;
+        font-weight: bold;
+        margin-top: 1rem;
+    }
+    .submit-btn:hover {
+        background-color: #218838;
+    }
+    label {
+        font-weight: 500;
+    }
+</style>
+<div class="inventory-title">Edit Inventory Item</div>
+<div class="form-container">
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="submit-btn">Save Changes</button>
+    </form>
+</div>
+{% endblock %}
