@@ -60,7 +60,7 @@
             <tbody>
                 {% for record in history %}
                     <tr>
-                        <td class="strong-value">{{ record.created_at|date:"M d, Y H:i" }}</td>
+                        <td class="strong-value">{{ record.created_at|date:"M d, Y g:i A" }}</td>
                         <td class="item-name">{{ record.inventory_item.item_name }}</td>
                         <td>{{ record.inventory_item.category }}</td>
                         <td class="quantity-added">+{{ record.quantity_added }}</td>

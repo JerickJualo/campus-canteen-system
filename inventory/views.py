@@ -1,4 +1,5 @@
 
+from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import JsonResponse
 from django.db import models, transaction
@@ -74,9 +75,14 @@ def multi_item_restock(request):
                         updated.append(item.item_name)
                 except (InventoryItem.DoesNotExist, ValueError):
                     continue
+        if updated:
+            messages.success(request, f"Successfully restocked {len(updated)} item(s): {', '.join(updated)}.")
+        else:
+            messages.error(request, 'Please add at least one item with a restock amount greater than 0.')
+
         return render(request, 'inventory/multi_item_restock.html', {
             'items': items,
-            'success': True,
+            'success': bool(updated),
             'updated': updated,
         })
     return render(request, 'inventory/multi_item_restock.html', {'items': items})
@@ -203,7 +209,12 @@ def restock_inventory_item(request, pk):
                     request=request,
                     note=form.cleaned_data['note'],
                 )
+            messages.success(
+                request,
+                f'{item.item_name} was restocked successfully. Added {quantity_to_add}; stock is now {item.quantity_in_stock}.',
+            )
             return redirect('inventory_list')
+        messages.error(request, 'Please enter a valid restock amount greater than 0.')
     else:
         form = RestockItemForm()
     return render(request, 'inventory/restock_inventory_item.html', {'form': form, 'item': item})
@@ -214,13 +225,47 @@ class InventoryItemForm(forms.ModelForm):
         model = InventoryItem
         fields = ['item_name', 'category', 'unit_price', 'quantity_in_stock', 'minimum_stock_level']
 
+    def clean_item_name(self):
+        item_name = self.cleaned_data['item_name'].strip()
+        if not item_name:
+            raise forms.ValidationError('Item name is required.')
+
+        duplicate_items = InventoryItem.objects.filter(item_name__iexact=item_name)
+        if self.instance.pk:
+            duplicate_items = duplicate_items.exclude(pk=self.instance.pk)
+
+        if duplicate_items.exists():
+            raise forms.ValidationError('An inventory item with this name already exists.')
+
+        return item_name
+
+    def clean_unit_price(self):
+        unit_price = self.cleaned_data['unit_price']
+        if unit_price <= 0:
+            raise forms.ValidationError('Unit price must be greater than 0.')
+        return unit_price
+
+    def clean_minimum_stock_level(self):
+        minimum_stock_level = self.cleaned_data['minimum_stock_level']
+        if minimum_stock_level < 1:
+            raise forms.ValidationError('Minimum stock level must be at least 1.')
+        return minimum_stock_level
+
+    def clean_quantity_in_stock(self):
+        quantity_in_stock = self.cleaned_data['quantity_in_stock']
+        if quantity_in_stock < 0:
+            raise forms.ValidationError('Quantity in stock cannot be negative.')
+        return quantity_in_stock
+
 # Add Inventory Item View
 def add_inventory_item(request):
     if request.method == 'POST':
         form = InventoryItemForm(request.POST)
         if form.is_valid():
-            form.save()
+            item = form.save()
+            messages.success(request, f'{item.item_name} was added successfully.')
             return redirect('inventory_list')
+        messages.error(request, 'Please correct the errors below before adding the item.')
     else:
         form = InventoryItemForm()
     return render(request, 'inventory/add_inventory_item.html', {'form': form})
@@ -232,8 +277,10 @@ def edit_inventory_item(request, pk):
     if request.method == 'POST':
         form = InventoryItemForm(request.POST, instance=item)
         if form.is_valid():
-            form.save()
+            item = form.save()
+            messages.success(request, f'{item.item_name} was updated successfully.')
             return redirect('inventory_list')
+        messages.error(request, 'Please correct the errors below before saving changes.')
     else:
         form = InventoryItemForm(instance=item)
     return render(request, 'inventory/edit_inventory_item.html', {'form': form, 'item': item})
@@ -243,6 +290,8 @@ def edit_inventory_item(request, pk):
 def delete_inventory_item(request, pk):
     item = get_object_or_404(InventoryItem, pk=pk)
     if request.method == 'POST':
+        item_name = item.item_name
         item.delete()
+        messages.success(request, f'{item_name} was deleted successfully.')
         return redirect('inventory_list')
     return render(request, 'inventory/delete_inventory_item.html', {'item': item})

@@ -109,7 +109,7 @@
             <tbody>
                 {% for record in recent_restocks %}
                     <tr>
-                        <td>{{ record.created_at|date:"M d, Y H:i" }}</td>
+                        <td>{{ record.created_at|date:"M d, Y g:i A" }}</td>
                         <td class="item-name">{{ record.inventory_item.item_name }}</td>
                         <td class="quantity-added">+{{ record.quantity_added }}</td>
                         <td class="stock-count">{{ record.previous_quantity }} to {{ record.new_quantity }}</td>
