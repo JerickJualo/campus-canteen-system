@@ -1,43 +1,140 @@
 {% extends 'base.html' %}
 {% block content %}
 <style>
-    .inventory-title {
-        color: orange;
-        font-size: 2rem;
-        font-weight: bold;
-        margin-bottom: 1rem;
-    }
-    .form-container {
-        background: white;
-        padding: 2rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        max-width: 500px;
+    .restock-page {
+        max-width: 720px;
         margin: 0 auto;
+        padding: 1rem;
     }
-    .submit-btn {
-        background-color: #28a745;
-        color: white;
-        border: none;
-        padding: 0.5rem 1.2rem;
-        border-radius: 4px;
-        font-weight: bold;
+
+    .page-title {
+        color: #1f2937;
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0 0 1rem;
+    }
+
+    .restock-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1.25rem;
+    }
+
+    .item-summary {
+        border-bottom: 1px solid #e5e7eb;
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+    }
+
+    .summary-label {
+        color: #6b7280;
+        font-size: 0.85rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .summary-value {
+        color: #111827;
+        font-size: 1.15rem;
+        font-weight: 800;
+    }
+
+    .restock-form p {
+        margin: 0 0 1rem;
+    }
+
+    .restock-form label {
+        color: #374151;
+        display: block;
+        font-weight: 700;
+        margin-bottom: 0.35rem;
+    }
+
+    .restock-input {
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        box-sizing: border-box;
+        padding: 0.65rem;
+        width: 100%;
+    }
+
+    .form-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
         margin-top: 1rem;
     }
-    .submit-btn:hover {
-        background-color: #218838;
+
+    .btn {
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: #fff;
+        display: inline-block;
+        font-weight: 700;
+        padding: 0.55rem 0.9rem;
+        text-decoration: none;
     }
-    label {
-        font-weight: 500;
+
+    .btn-success {
+        background: #16a34a;
+    }
+
+    .btn-muted {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+        color: #374151;
+    }
+
+    .help-text {
+        color: #6b7280;
+        margin: 0.75rem 0 0;
+    }
+
+    .errorlist {
+        color: #dc2626;
+        margin: 0 0 0.75rem;
+        padding-left: 1rem;
+    }
+
+    @media (max-width: 700px) {
+        .item-summary {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
-<div class="inventory-title">Restock Inventory Item</div>
-<div class="form-container">
-    <form method="post">
-        {% csrf_token %}
-        <p><strong>{{ item.item_name }}</strong> (Current: {{ item.quantity_in_stock }})</p>
-        {{ form.as_p }}
-        <button type="submit" class="submit-btn">Update Stock</button>
-    </form>
+
+<div class="restock-page">
+    <h2 class="page-title">Restock Item</h2>
+
+    <div class="restock-card">
+        <div class="item-summary">
+            <div>
+                <div class="summary-label">Item</div>
+                <div class="summary-value">{{ item.item_name }}</div>
+            </div>
+            <div>
+                <div class="summary-label">Current Stock</div>
+                <div class="summary-value">{{ item.quantity_in_stock }}</div>
+            </div>
+            <div>
+                <div class="summary-label">Minimum Stock</div>
+                <div class="summary-value">{{ item.minimum_stock_level }}</div>
+            </div>
+        </div>
+
+        <form method="post" class="restock-form">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <p class="help-text">The entered amount will be added to the current stock.</p>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success">Add Stock</button>
+                <a href="{% url 'inventory_list' %}" class="btn btn-muted">Back to Inventory</a>
+                <a href="{% url 'inventory_history' %}?search={{ item.item_name|urlencode }}" class="btn btn-muted">View History</a>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}

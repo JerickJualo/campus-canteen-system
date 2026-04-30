@@ -1,136 +1,299 @@
 {% extends 'base.html' %}
 {% block content %}
 <style>
-    .dashboard-title {
-        color: orange;
-        font-size: 2rem;
-        font-weight: bold;
-        margin-bottom: 1rem;
+    .dashboard-page {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 1rem;
     }
-    .dashboard-summary {
+
+    .dashboard-header {
         display: flex;
-        gap: 2rem;
-        margin-bottom: 2rem;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: flex-start;
+        margin-bottom: 1.25rem;
     }
-    .summary-card {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        padding: 1.5rem 2rem;
-        min-width: 180px;
-        text-align: center;
+
+    .dashboard-title {
+        color: #1f2937;
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0 0 0.35rem;
     }
-    .summary-label {
-        color: #888;
-        font-size: 1rem;
+
+    .dashboard-subtitle {
+        color: #6b7280;
+        margin: 0;
     }
-    .summary-value {
-        font-size: 2.2rem;
-        font-weight: bold;
-        color: #28a745;
+
+    .dashboard-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
-    .alert-section {
-        margin-bottom: 2rem;
+
+    .btn {
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: #fff;
+        display: inline-block;
+        font-weight: 700;
+        padding: 0.55rem 0.9rem;
+        text-decoration: none;
+        white-space: nowrap;
     }
-    .alert-title {
-        color: orange;
-        font-weight: bold;
-        font-size: 1.2rem;
-        margin-bottom: 0.5rem;
+
+    .btn-primary {
+        background: #2563eb;
     }
-    .alert-table {
-        width: 100%;
-        background: white;
-        border-collapse: collapse;
+
+    .btn-success {
+        background: #16a34a;
+    }
+
+    .btn-muted {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+        color: #374151;
+    }
+
+    .summary-grid {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         margin-bottom: 1rem;
     }
-    .alert-table th, .alert-table td {
-        border: 1px solid #ddd;
-        padding: 0.6rem;
+
+    .summary-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .summary-label {
+        color: #6b7280;
+        font-size: 0.88rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .summary-value {
+        color: #111827;
+        font-size: 1.9rem;
+        font-weight: 800;
+    }
+
+    .summary-value.warning {
+        color: #d97706;
+    }
+
+    .summary-value.danger {
+        color: #dc2626;
+    }
+
+    .alert-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-bottom: 1rem;
+    }
+
+    .panel {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .panel-header {
+        align-items: center;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        padding: 0.85rem 1rem;
+    }
+
+    .panel-title {
+        color: #111827;
+        font-weight: 800;
+        margin: 0;
+    }
+
+    .panel-link {
+        color: #2563eb;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .alert-table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    .alert-table th,
+    .alert-table td {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 0.75rem;
         text-align: left;
     }
+
     .alert-table th {
-        background: #f8f9fa;
+        color: #374151;
+        font-size: 0.82rem;
+        text-transform: uppercase;
     }
-    .go-list-btn {
-        background-color: #28a745;
-        color: white;
-        border: none;
-        padding: 0.5rem 1.2rem;
-        border-radius: 4px;
-        text-decoration: none;
-        font-weight: bold;
-        margin-bottom: 1rem;
-        display: inline-block;
+
+    .alert-table tr:last-child td {
+        border-bottom: none;
     }
-    .go-list-btn:hover {
-        background-color: #218838;
+
+    .empty-state {
+        color: #6b7280;
+        padding: 1.25rem;
+    }
+
+    @media (max-width: 900px) {
+        .dashboard-header {
+            display: block;
+        }
+
+        .dashboard-actions {
+            margin-top: 0.75rem;
+        }
+
+        .summary-grid,
+        .alert-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
-<div class="dashboard-title">Inventory Dashboard</div>
-<a href="{% url 'inventory_list' %}" class="go-list-btn">Go to Inventory List</a>
-<div class="dashboard-summary">
-    <div class="summary-card">
-        <div class="summary-label">Total Items</div>
-        <div class="summary-value">{{ total_items }}</div>
+
+<div class="dashboard-page">
+    <div class="dashboard-header">
+        <div>
+            <h2 class="dashboard-title">Inventory Dashboard</h2>
+            <p class="dashboard-subtitle">Monitor stock levels and jump into common inventory tasks.</p>
+        </div>
+        <div class="dashboard-actions">
+            <a href="{% url 'inventory_list' %}" class="btn btn-muted">Inventory List</a>
+            <a href="{% url 'inventory_history' %}" class="btn btn-muted">History</a>
+            <a href="{% url 'multi_item_restock' %}" class="btn btn-primary">Multi-item Restock</a>
+            <a href="{% url 'add_inventory_item' %}" class="btn btn-success">Add Item</a>
+        </div>
     </div>
-    <div class="summary-card">
-        <div class="summary-label">Low Stock</div>
-        <div class="summary-value" style="color: orange;">{{ total_low_stock }}</div>
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-label">Total Items</div>
+            <div class="summary-value">{{ total_items }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Low Stock</div>
+            <div class="summary-value warning">{{ total_low_stock }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Out of Stock</div>
+            <div class="summary-value danger">{{ total_out_of_stock }}</div>
+        </div>
     </div>
-    <div class="summary-card">
-        <div class="summary-label">Out of Stock</div>
-        <div class="summary-value" style="color: red;">{{ total_out_of_stock }}</div>
+
+    <div class="alert-grid">
+        <section class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Low Stock Items</h3>
+                <a href="{% url 'inventory_list' %}?stock_status=low_stock" class="panel-link">View all</a>
+            </div>
+            <table class="alert-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Category</th>
+                        <th>Qty</th>
+                        <th>Min</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in low_stock_items %}
+                        <tr>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.category }}</td>
+                            <td>{{ item.quantity_in_stock }}</td>
+                            <td>{{ item.minimum_stock_level }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="empty-state">No low stock items.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Out of Stock Items</h3>
+                <a href="{% url 'inventory_list' %}?stock_status=out_of_stock" class="panel-link">View all</a>
+            </div>
+            <table class="alert-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Category</th>
+                        <th>Qty</th>
+                        <th>Min</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in out_of_stock_items %}
+                        <tr>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.category }}</td>
+                            <td>{{ item.quantity_in_stock }}</td>
+                            <td>{{ item.minimum_stock_level }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="empty-state">No out of stock items.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
     </div>
-</div>
-<div class="alert-section">
-    <div class="alert-title">Low Stock Items</div>
-    <table class="alert-table">
-        <thead>
-            <tr>
-                <th>Item Name</th>
-                <th>Category</th>
-                <th>Current Qty</th>
-                <th>Min Stock</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in low_stock_items %}
-            <tr>
-                <td>{{ item.item_name }}</td>
-                <td>{{ item.category }}</td>
-                <td>{{ item.quantity_in_stock }}</td>
-                <td>{{ item.minimum_stock_level }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4">No low stock items.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-<div class="alert-section">
-    <div class="alert-title">Out of Stock Items</div>
-    <table class="alert-table">
-        <thead>
-            <tr>
-                <th>Item Name</th>
-                <th>Category</th>
-                <th>Current Qty</th>
-                <th>Min Stock</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in out_of_stock_items %}
-            <tr>
-                <td>{{ item.item_name }}</td>
-                <td>{{ item.category }}</td>
-                <td>{{ item.quantity_in_stock }}</td>
-                <td>{{ item.minimum_stock_level }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4">No out of stock items.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+
+    <section class="panel">
+        <div class="panel-header">
+            <h3 class="panel-title">Recent Restocks</h3>
+            <a href="{% url 'inventory_history' %}" class="panel-link">View history</a>
+        </div>
+        <table class="alert-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>Added</th>
+                    <th>Stock Change</th>
+                    <th>By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in recent_restocks %}
+                    <tr>
+                        <td>{{ record.created_at|date:"M d, Y H:i" }}</td>
+                        <td>{{ record.inventory_item.item_name }}</td>
+                        <td>+{{ record.quantity_added }}</td>
+                        <td>{{ record.previous_quantity }} to {{ record.new_quantity }}</td>
+                        <td>
+                            {% if record.restocked_by %}
+                                {{ record.restocked_by }}
+                            {% else %}
+                                System
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5" class="empty-state">No restocks have been recorded yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
 </div>
 {% endblock %}

@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 # Inventory categories
 CATEGORY_CHOICES = [
@@ -34,3 +35,29 @@ class InventoryItem(models.Model):
 
 	def __str__(self):
 		return f"{self.item_name} ({self.category})"
+
+
+class RestockHistory(models.Model):
+	inventory_item = models.ForeignKey(
+		InventoryItem,
+		on_delete=models.CASCADE,
+		related_name="restock_history",
+	)
+	quantity_added = models.PositiveIntegerField()
+	previous_quantity = models.PositiveIntegerField()
+	new_quantity = models.PositiveIntegerField()
+	restocked_by = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.SET_NULL,
+		null=True,
+		blank=True,
+	)
+	note = models.CharField(max_length=255, blank=True)
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ["-created_at"]
+		verbose_name_plural = "Restock history"
+
+	def __str__(self):
+		return f"{self.inventory_item.item_name} +{self.quantity_added}"

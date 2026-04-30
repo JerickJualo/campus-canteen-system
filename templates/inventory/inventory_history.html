@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .history-page {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+
+    .history-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: flex-start;
+        margin-bottom: 1.25rem;
+    }
+
+    .history-title {
+        color: #1f2937;
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0 0 0.35rem;
+    }
+
+    .history-subtitle,
+    .muted {
+        color: #6b7280;
+    }
+
+    .history-subtitle {
+        margin: 0;
+    }
+
+    .history-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .btn {
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: #fff;
+        display: inline-block;
+        font-weight: 700;
+        padding: 0.55rem 0.9rem;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .btn-primary {
+        background: #2563eb;
+    }
+
+    .btn-muted {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+        color: #374151;
+    }
+
+    .filter-panel,
+    .history-table-wrap {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+    }
+
+    .filter-panel {
+        margin-bottom: 1rem;
+        padding: 1rem;
+    }
+
+    .filter-form {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: 2fr minmax(150px, 1fr) repeat(2, minmax(140px, 1fr)) auto auto;
+        align-items: end;
+    }
+
+    .filter-field label {
+        color: #374151;
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin-bottom: 0.3rem;
+    }
+
+    .filter-field input,
+    .filter-field select {
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        box-sizing: border-box;
+        padding: 0.55rem 0.65rem;
+        width: 100%;
+    }
+
+    .history-table-wrap {
+        overflow-x: auto;
+    }
+
+    .history-table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    .history-table th,
+    .history-table td {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 0.8rem;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    .history-table th {
+        background: #f9fafb;
+        color: #374151;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+    }
+
+    .history-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .item-name {
+        color: #111827;
+        font-weight: 800;
+    }
+
+    .quantity-added {
+        color: #166534;
+        font-weight: 800;
+    }
+
+    .empty-state {
+        color: #6b7280;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    @media (max-width: 900px) {
+        .history-header,
+        .filter-form {
+            display: block;
+        }
+
+        .history-actions,
+        .filter-field,
+        .filter-form .btn {
+            margin-top: 0.75rem;
+        }
+    }
+</style>
+
+<div class="history-page">
+    <div class="history-header">
+        <div>
+            <h2 class="history-title">Inventory History</h2>
+            <p class="history-subtitle">Review restock activity and stock changes over time.</p>
+        </div>
+        <div class="history-actions">
+            <a href="{% url 'inventory_dashboard' %}" class="btn btn-muted">Dashboard</a>
+            <a href="{% url 'inventory_list' %}" class="btn btn-muted">Inventory List</a>
+            <a href="{% url 'multi_item_restock' %}" class="btn btn-primary">Multi-item Restock</a>
+        </div>
+    </div>
+
+    <div class="filter-panel">
+        <form method="get" class="filter-form">
+            <div class="filter-field">
+                <label for="search">Search</label>
+                <input id="search" type="text" name="search" placeholder="Item name" value="{{ request.GET.search|default_if_none:'' }}">
+            </div>
+            <div class="filter-field">
+                <label for="category">Category</label>
+                <select id="category" name="category">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat }}" {% if request.GET.category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="date_from">From</label>
+                <input id="date_from" type="date" name="date_from" value="{{ request.GET.date_from|default_if_none:'' }}">
+            </div>
+            <div class="filter-field">
+                <label for="date_to">To</label>
+                <input id="date_to" type="date" name="date_to" value="{{ request.GET.date_to|default_if_none:'' }}">
+            </div>
+            <button type="submit" class="btn btn-primary">Apply</button>
+            <a href="{% url 'inventory_history' %}" class="btn btn-muted">Reset</a>
+        </form>
+    </div>
+
+    <div class="history-table-wrap">
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>Category</th>
+                    <th>Added</th>
+                    <th>Before</th>
+                    <th>After</th>
+                    <th>By</th>
+                    <th>Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in history %}
+                    <tr>
+                        <td>{{ record.created_at|date:"M d, Y H:i" }}</td>
+                        <td>
+                            <div class="item-name">{{ record.inventory_item.item_name }}</div>
+                        </td>
+                        <td>{{ record.inventory_item.category }}</td>
+                        <td class="quantity-added">+{{ record.quantity_added }}</td>
+                        <td>{{ record.previous_quantity }}</td>
+                        <td>{{ record.new_quantity }}</td>
+                        <td>
+                            {% if record.restocked_by %}
+                                {{ record.restocked_by }}
+                            {% else %}
+                                <span class="muted">System</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if record.note %}
+                                {{ record.note }}
+                            {% else %}
+                                <span class="muted">No note</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="8" class="empty-state">No restock history found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

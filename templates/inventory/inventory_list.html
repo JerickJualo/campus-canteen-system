@@ -1,97 +1,369 @@
 {% extends 'base.html' %}
 {% block content %}
 <style>
+    .inventory-page {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+
+    .inventory-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: flex-start;
+        margin-bottom: 1.25rem;
+    }
+
     .inventory-title {
-        color: orange;
+        color: #1f2937;
         font-size: 2rem;
-        font-weight: bold;
-        margin-bottom: 1rem;
+        font-weight: 700;
+        margin: 0 0 0.35rem;
     }
-    .add-btn {
-        background-color: #28a745;
-        color: white;
-        border: none;
-        padding: 0.5rem 1.2rem;
-        border-radius: 4px;
-        text-decoration: none;
-        font-weight: bold;
-        margin-bottom: 1rem;
+
+    .inventory-subtitle {
+        color: #6b7280;
+        margin: 0;
+    }
+
+    .inventory-actions,
+    .table-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .btn {
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: #fff;
         display: inline-block;
+        font-weight: 700;
+        padding: 0.55rem 0.9rem;
+        text-decoration: none;
+        white-space: nowrap;
     }
-    .add-btn:hover {
-        background-color: #218838;
+
+    .btn-primary {
+        background: #2563eb;
     }
-    .inventory-table {
+
+    .btn-success {
+        background: #16a34a;
+    }
+
+    .btn-warning {
+        background: #f59e0b;
+        color: #111827;
+    }
+
+    .btn-muted {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+        color: #374151;
+    }
+
+    .summary-row {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-bottom: 1rem;
+    }
+
+    .summary-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .summary-label {
+        color: #6b7280;
+        font-size: 0.88rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .summary-value {
+        color: #111827;
+        font-size: 1.7rem;
+        font-weight: 800;
+    }
+
+    .filter-panel {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        padding: 1rem;
+    }
+
+    .filter-form {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: 2fr repeat(3, minmax(150px, 1fr)) auto auto;
+        align-items: end;
+    }
+
+    .filter-field label {
+        color: #374151;
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin-bottom: 0.3rem;
+    }
+
+    .filter-field input,
+    .filter-field select {
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        box-sizing: border-box;
+        padding: 0.55rem 0.65rem;
         width: 100%;
-        background: white;
+    }
+
+    .inventory-table-wrap {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow-x: auto;
+    }
+
+    .inventory-table {
         border-collapse: collapse;
-        margin-bottom: 2rem;
+        width: 100%;
     }
-    .inventory-table th, .inventory-table td {
-        border: 1px solid #ddd;
-        padding: 0.6rem;
+
+    .inventory-table th,
+    .inventory-table td {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 0.8rem;
         text-align: left;
+        vertical-align: middle;
     }
+
     .inventory-table th {
-        background: #f8f9fa;
+        background: #f9fafb;
+        color: #374151;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+    }
+
+    .inventory-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .item-name {
+        color: #111827;
+        font-weight: 800;
+    }
+
+    .muted {
+        color: #6b7280;
+    }
+
+    .stock-meter {
+        background: #e5e7eb;
+        border-radius: 999px;
+        height: 8px;
+        margin-top: 0.35rem;
+        max-width: 140px;
+        overflow: hidden;
+    }
+
+    .stock-meter span {
+        background: #16a34a;
+        display: block;
+        height: 100%;
+        width: 100%;
+    }
+
+    .stock-meter.low span {
+        background: #f59e0b;
+    }
+
+    .stock-meter.empty span {
+        background: #dc2626;
+    }
+
+    .badge {
+        border-radius: 999px;
+        display: inline-block;
+        font-size: 0.8rem;
+        font-weight: 800;
+        padding: 0.25rem 0.55rem;
+    }
+
+    .badge-ok {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-low {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-out {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .action-link {
+        color: #2563eb;
+        font-weight: 700;
+        margin-right: 0.75rem;
+        text-decoration: none;
+    }
+
+    .action-link.danger {
+        color: #dc2626;
+    }
+
+    .empty-state {
+        color: #6b7280;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    @media (max-width: 900px) {
+        .inventory-header,
+        .filter-form {
+            display: block;
+        }
+
+        .inventory-actions,
+        .filter-field,
+        .filter-form .btn {
+            margin-top: 0.75rem;
+        }
+
+        .summary-row {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
-<div class="inventory-title">Inventory List</div>
 
-<form method="get" id="search-sort-form" style="margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
-    <input type="text" name="search" placeholder="Search items..." value="{{ request.GET.search|default_if_none:'' }}" style="padding: 0.4rem 0.8rem; border-radius: 4px; border: 1px solid #ccc;">
-    <select name="category" style="padding: 0.4rem 0.8rem; border-radius: 4px; border: 1px solid #ccc;">
-        <option value="">All Categories</option>
-        {% for cat in categories %}
-    <option value="{{ cat }}" {% if request.GET.category == cat %}selected{% endif %}>{{ cat }}</option>
-        {% endfor %}
-    </select>
-    <select name="sort" style="padding: 0.4rem 0.8rem; border-radius: 4px; border: 1px solid #ccc;">
-        <option value="item_name" {% if request.GET.sort == 'item_name' %}selected{% endif %}>Sort by Name</option>
-        <option value="category" {% if request.GET.sort == 'category' %}selected{% endif %}>Sort by Category</option>
-        <option value="quantity_in_stock" {% if request.GET.sort == 'quantity_in_stock' %}selected{% endif %}>Sort by Stock</option>
-    </select>
-    <button type="submit" class="add-btn" style="background-color: #007bff;">Apply</button>
-</form>
-<a href="{% url 'add_inventory_item' %}" class="add-btn">+ Add Item</a>
-<a href="{% url 'multi_item_restock' %}" class="add-btn" style="background-color: #007bff; margin-left: 10px;">Multi-item Restock</a>
-<a href="{% url 'inventory_dashboard' %}" class="add-btn" style="background-color: orange; margin-left: 10px;">Inventory Dashboard</a>
-<table class="inventory-table">
-    <thead>
-        <tr>
-            <th>Item Name</th>
-            <th>Category</th>
-            <th>Unit Price</th>
-            <th>Quantity</th>
-            <th>Min Stock</th>
-            <th>Status</th>
-            <th>Actions</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for item in items %}
-        <tr {% if item.pk in low_stock_items %}style="background: #fff3cd;"{% endif %}>
-            <td>{{ item.item_name }}</td>
-            <td>{{ item.category }}</td>
-            <td>₱{{ item.unit_price }}</td>
-            <td>{{ item.quantity_in_stock }}</td>
-            <td>{{ item.minimum_stock_level }}</td>
-            <td>{{ item.status }}</td>
-            <td>
-                <a href="{% url 'edit_inventory_item' item.pk %}" style="color: #28a745; font-weight: bold; margin-right: 8px;">Edit</a>
-                <a href="{% url 'delete_inventory_item' item.pk %}" style="color: orange; font-weight: bold; margin-right: 8px;">Delete</a>
-                <a href="{% url 'restock_inventory_item' item.pk %}" style="color: #007bff; font-weight: bold;">Restock</a>
-            </td>
-            <td>
-                {% if item.pk in low_stock_items %}
-                    <span style="color: orange; font-weight: bold;">Low Stock!</span>
-                {% endif %}
-            </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6">No items in inventory.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="inventory-page">
+    <div class="inventory-header">
+        <div>
+            <h2 class="inventory-title">Inventory List</h2>
+            <p class="inventory-subtitle">Manage canteen items, stock levels, and restocking actions.</p>
+        </div>
+        <div class="inventory-actions">
+            <a href="{% url 'inventory_dashboard' %}" class="btn btn-muted">Dashboard</a>
+            <a href="{% url 'inventory_history' %}" class="btn btn-muted">History</a>
+            <a href="{% url 'multi_item_restock' %}" class="btn btn-primary">Multi-item Restock</a>
+            <a href="{% url 'add_inventory_item' %}" class="btn btn-success">Add Item</a>
+        </div>
+    </div>
+
+    <div class="summary-row">
+        <div class="summary-card">
+            <div class="summary-label">Total Items</div>
+            <div class="summary-value">{{ total_items }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Low Stock</div>
+            <div class="summary-value">{{ low_stock_count }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Out of Stock</div>
+            <div class="summary-value">{{ out_of_stock_count }}</div>
+        </div>
+    </div>
+
+    <div class="filter-panel">
+        <form method="get" class="filter-form">
+            <div class="filter-field">
+                <label for="search">Search</label>
+                <input id="search" type="text" name="search" placeholder="Item name" value="{{ request.GET.search|default_if_none:'' }}">
+            </div>
+            <div class="filter-field">
+                <label for="category">Category</label>
+                <select id="category" name="category">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat }}" {% if request.GET.category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="stock_status">Stock Status</label>
+                <select id="stock_status" name="stock_status">
+                    <option value="">All Statuses</option>
+                    <option value="available" {% if request.GET.stock_status == 'available' %}selected{% endif %}>Available</option>
+                    <option value="low_stock" {% if request.GET.stock_status == 'low_stock' %}selected{% endif %}>Low Stock</option>
+                    <option value="out_of_stock" {% if request.GET.stock_status == 'out_of_stock' %}selected{% endif %}>Out of Stock</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="sort">Sort</label>
+                <select id="sort" name="sort">
+                    <option value="item_name" {% if request.GET.sort == 'item_name' %}selected{% endif %}>Name</option>
+                    <option value="category" {% if request.GET.sort == 'category' %}selected{% endif %}>Category</option>
+                    <option value="quantity_in_stock" {% if request.GET.sort == 'quantity_in_stock' %}selected{% endif %}>Stock</option>
+                    <option value="unit_price" {% if request.GET.sort == 'unit_price' %}selected{% endif %}>Price</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Apply</button>
+            <a href="{% url 'inventory_list' %}" class="btn btn-muted">Reset</a>
+        </form>
+    </div>
+
+    <div class="inventory-table-wrap">
+        <table class="inventory-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Category</th>
+                    <th>Unit Price</th>
+                    <th>Stock</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                    <tr>
+                        <td>
+                            <div class="item-name">{{ item.item_name }}</div>
+                            <div class="muted">Minimum stock: {{ item.minimum_stock_level }}</div>
+                        </td>
+                        <td>{{ item.category }}</td>
+                        <td>PHP {{ item.unit_price }}</td>
+                        <td>
+                            <strong>{{ item.quantity_in_stock }}</strong>
+                            {% if item.quantity_in_stock == 0 %}
+                                <div class="stock-meter empty"><span style="width: 100%;"></span></div>
+                            {% elif item.quantity_in_stock <= item.minimum_stock_level %}
+                                <div class="stock-meter low"><span style="width: 45%;"></span></div>
+                            {% else %}
+                                <div class="stock-meter"><span style="width: 100%;"></span></div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.quantity_in_stock == 0 %}
+                                <span class="badge badge-out">Out of Stock</span>
+                            {% elif item.quantity_in_stock <= item.minimum_stock_level %}
+                                <span class="badge badge-low">Low Stock</span>
+                            {% else %}
+                                <span class="badge badge-ok">Available</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'restock_inventory_item' item.pk %}" class="action-link">Restock</a>
+                            <a href="{% url 'edit_inventory_item' item.pk %}" class="action-link">Edit</a>
+                            <a href="{% url 'delete_inventory_item' item.pk %}" class="action-link danger">Delete</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="empty-state">No inventory items match the current filters.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}

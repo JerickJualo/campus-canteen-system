@@ -71,6 +71,10 @@
     }
 </style>
 <div class="inventory-title">Multi-item Restock</div>
+<div style="margin-bottom: 1rem;">
+    <a href="{% url 'inventory_list' %}" style="color: #2563eb; font-weight: bold; margin-right: 1rem; text-decoration: none;">Inventory List</a>
+    <a href="{% url 'inventory_history' %}" style="color: #2563eb; font-weight: bold; text-decoration: none;">History</a>
+</div>
 {% if success %}
     <div class="success-message">Successfully restocked: {{ updated|join:', ' }}</div>
 {% endif %}
@@ -108,7 +112,7 @@ searchBar.addEventListener('input', function() {
         searchResults.innerHTML = '';
         return;
     }
-    fetch(`/inventory/inventory-search/?q=${encodeURIComponent(query)}`)
+    fetch(`{% url 'inventory_search' %}?q=${encodeURIComponent(query)}`)
         .then(response => response.json())
         .then(data => {
             searchResults.innerHTML = '';
