@@ -62,9 +62,35 @@ def inventory_search(request):
             })
     return JsonResponse({'results': results})
 
-# Inventory List View
 def inventory_list(request):
-    items = InventoryItem.objects.all().order_by('item_name')
+    items = InventoryItem.objects.all()
+    search_query = request.GET.get('search', '').strip()
+    category_filter = request.GET.get('category', '').strip()
+    sort_by = request.GET.get('sort', 'item_name')
+
+    if search_query:
+        items = items.filter(item_name__icontains=search_query)
+
+    if category_filter:
+        items = items.filter(category=category_filter)
+
+    if sort_by in ['item_name', 'category', 'quantity_in_stock']:
+        items = items.order_by(sort_by)
+    else:
+        items = items.order_by('item_name')
+
+    # Get categories for the dropdown
+    categories = InventoryItem.objects.values_list('category', flat=True).distinct().order_by('category')
+
+    # Low stock items
+    low_stock_items = [item.pk for item in items if item.quantity_in_stock <= item.minimum_stock_level]
+
+    return render(request, 'inventory/inventory_list.html', {
+        'items': items,
+        'categories': categories,
+        'low_stock_items': low_stock_items,
+    })
+
     # Basic stock monitoring: flag low stock
     low_stock_items = [item.pk for item in items if item.quantity_in_stock <= item.minimum_stock_level]
     return render(request, 'inventory/inventory_list.html', {

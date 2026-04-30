@@ -37,6 +37,22 @@
     }
 </style>
 <div class="inventory-title">Inventory List</div>
+
+<form method="get" id="search-sort-form" style="margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+    <input type="text" name="search" placeholder="Search items..." value="{{ request.GET.search|default_if_none:'' }}" style="padding: 0.4rem 0.8rem; border-radius: 4px; border: 1px solid #ccc;">
+    <select name="category" style="padding: 0.4rem 0.8rem; border-radius: 4px; border: 1px solid #ccc;">
+        <option value="">All Categories</option>
+        {% for cat in categories %}
+    <option value="{{ cat }}" {% if request.GET.category == cat %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+    </select>
+    <select name="sort" style="padding: 0.4rem 0.8rem; border-radius: 4px; border: 1px solid #ccc;">
+        <option value="item_name" {% if request.GET.sort == 'item_name' %}selected{% endif %}>Sort by Name</option>
+        <option value="category" {% if request.GET.sort == 'category' %}selected{% endif %}>Sort by Category</option>
+        <option value="quantity_in_stock" {% if request.GET.sort == 'quantity_in_stock' %}selected{% endif %}>Sort by Stock</option>
+    </select>
+    <button type="submit" class="add-btn" style="background-color: #007bff;">Apply</button>
+</form>
 <a href="{% url 'add_inventory_item' %}" class="add-btn">+ Add Item</a>
 <a href="{% url 'multi_item_restock' %}" class="add-btn" style="background-color: #007bff; margin-left: 10px;">Multi-item Restock</a>
 <a href="{% url 'inventory_dashboard' %}" class="add-btn" style="background-color: orange; margin-left: 10px;">Inventory Dashboard</a>
