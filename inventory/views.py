@@ -1,7 +1,28 @@
-# Multi-item Restock View and AJAX Search
+
+# --- Imports ---
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.db import models
+from .models import InventoryItem
+from django import forms
 
+# --- Inventory Dashboard View ---
+def inventory_dashboard(request):
+    items = InventoryItem.objects.all()
+    total_items = items.count()
+    low_stock_items = items.filter(quantity_in_stock__lte=models.F('minimum_stock_level'), quantity_in_stock__gt=0)
+    out_of_stock_items = items.filter(quantity_in_stock=0)
+    context = {
+        'total_items': total_items,
+        'total_low_stock': low_stock_items.count(),
+        'total_out_of_stock': out_of_stock_items.count(),
+        'low_stock_items': low_stock_items,
+        'out_of_stock_items': out_of_stock_items,
+    }
+    return render(request, 'inventory/inventory_dashboard.html', context)
+
+# --- Multi-item Restock View and AJAX Search ---
 def multi_item_restock(request):
     items = InventoryItem.objects.all().order_by('item_name')
     if request.method == 'POST':
@@ -27,7 +48,6 @@ def multi_item_restock(request):
         })
     return render(request, 'inventory/multi_item_restock.html', {'items': items})
 
-# AJAX search endpoint for inventory items
 def inventory_search(request):
     q = request.GET.get('q', '').lower()
     results = []
@@ -41,9 +61,6 @@ def inventory_search(request):
                 'minimum_stock_level': item.minimum_stock_level,
             })
     return JsonResponse({'results': results})
-from django.shortcuts import render, redirect
-from .models import InventoryItem
-from django import forms
 
 # Inventory List View
 def inventory_list(request):
