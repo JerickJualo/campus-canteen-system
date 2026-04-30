@@ -1,104 +1,61 @@
 {% extends 'base.html' %}
 {% block content %}
-<style>
-    .inventory-title {
-        color: orange;
-        font-size: 2rem;
-        font-weight: bold;
-        margin-bottom: 1rem;
-    }
-    .search-bar {
-        width: 100%;
-        max-width: 400px;
-        padding: 0.5rem;
-        margin-bottom: 1rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-    }
-    .search-results {
-        background: #fff;
-        border: 1px solid #ddd;
-        max-width: 400px;
-        margin-bottom: 1rem;
-        border-radius: 4px;
-        position: absolute;
-        z-index: 10;
-    }
-    .search-result-item {
-        padding: 0.5rem;
-        cursor: pointer;
-    }
-    .search-result-item:hover {
-        background: #f8f9fa;
-    }
-    .multi-restock-table {
-        width: 100%;
-        background: white;
-        border-collapse: collapse;
-        margin-bottom: 2rem;
-    }
-    .multi-restock-table th, .multi-restock-table td {
-        border: 1px solid #ddd;
-        padding: 0.6rem;
-        text-align: left;
-    }
-    .multi-restock-table th {
-        background: #f8f9fa;
-    }
-    .remove-btn {
-        color: orange;
-        font-weight: bold;
-        cursor: pointer;
-        border: none;
-        background: none;
-    }
-    .submit-btn {
-        background-color: #28a745;
-        color: white;
-        border: none;
-        padding: 0.5rem 1.2rem;
-        border-radius: 4px;
-        font-weight: bold;
-        margin-top: 1rem;
-    }
-    .submit-btn:hover {
-        background-color: #218838;
-    }
-    .success-message {
-        color: #28a745;
-        font-weight: bold;
-        margin-bottom: 1rem;
-    }
-</style>
-<div class="inventory-title">Multi-item Restock</div>
-<div style="margin-bottom: 1rem;">
-    <a href="{% url 'inventory_list' %}" style="color: #2563eb; font-weight: bold; margin-right: 1rem; text-decoration: none;">Inventory List</a>
-    <a href="{% url 'inventory_history' %}" style="color: #2563eb; font-weight: bold; text-decoration: none;">History</a>
+{% include 'inventory/_inventory_styles.html' %}
+
+<div class="inv-page">
+    <div class="inv-header">
+        <div>
+            <h2 class="inv-title">Multi-item Restock</h2>
+            <p class="inv-subtitle">Search items, add them to the table, and submit restock quantities together.</p>
+        </div>
+        <div class="inv-actions">
+            <a href="{% url 'inventory_dashboard' %}" class="btn btn-muted">Dashboard</a>
+            <a href="{% url 'inventory_list' %}" class="btn btn-muted">Inventory List</a>
+            <a href="{% url 'inventory_history' %}" class="btn btn-muted">History</a>
+        </div>
+    </div>
+
+    {% if success %}
+        <div class="success-message">Successfully restocked: {{ updated|join:', ' }}</div>
+    {% endif %}
+
+    <div class="filter-panel">
+        <div class="search-area">
+            <div class="filter-field">
+                <label for="search-bar">Search Item</label>
+                <input type="text" id="search-bar" placeholder="Search for items to restock" autocomplete="off">
+            </div>
+            <div id="search-results" class="search-results" hidden></div>
+        </div>
+    </div>
+
+    <form method="post" id="multi-restock-form">
+        {% csrf_token %}
+        <div class="inventory-table-wrap">
+            <table class="multi-restock-table" id="restock-table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Category</th>
+                        <th>Current Qty</th>
+                        <th>Min Stock</th>
+                        <th>Restock Amount</th>
+                        <th>Remove</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr id="empty-restock-row">
+                        <td colspan="6" class="empty-state">Search and select items to restock.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="form-actions mt-1">
+            <button type="submit" class="btn btn-success">Submit Restock</button>
+        </div>
+    </form>
 </div>
-{% if success %}
-    <div class="success-message">Successfully restocked: {{ updated|join:', ' }}</div>
-{% endif %}
-<input type="text" id="search-bar" class="search-bar" placeholder="Search for items to restock..." autocomplete="off">
-<div id="search-results" class="search-results" style="display:none;"></div>
-<form method="post" id="multi-restock-form">
-    {% csrf_token %}
-    <table class="multi-restock-table" id="restock-table">
-        <thead>
-            <tr>
-                <th>Item Name</th>
-                <th>Category</th>
-                <th>Current Qty</th>
-                <th>Min Stock</th>
-                <th>Restock Amount</th>
-                <th>Remove</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Rows added dynamically -->
-        </tbody>
-    </table>
-    <button type="submit" class="submit-btn">Submit Restock</button>
-</form>
+
 <script>
 const searchBar = document.getElementById('search-bar');
 const searchResults = document.getElementById('search-results');
@@ -108,10 +65,11 @@ let addedItems = {};
 searchBar.addEventListener('input', function() {
     const query = this.value.trim();
     if (query.length === 0) {
-        searchResults.style.display = 'none';
+        searchResults.hidden = true;
         searchResults.innerHTML = '';
         return;
     }
+
     fetch(`{% url 'inventory_search' %}?q=${encodeURIComponent(query)}`)
         .then(response => response.json())
         .then(data => {
@@ -126,32 +84,39 @@ searchBar.addEventListener('input', function() {
                         searchResults.appendChild(div);
                     }
                 });
-                searchResults.style.display = 'block';
+                searchResults.hidden = !searchResults.innerHTML;
             } else {
-                searchResults.style.display = 'none';
+                searchResults.hidden = true;
             }
         });
 });
 
 document.addEventListener('click', function(e) {
     if (!searchBar.contains(e.target) && !searchResults.contains(e.target)) {
-        searchResults.style.display = 'none';
+        searchResults.hidden = true;
     }
 });
 
 function addItemToTable(item) {
     if (addedItems[item.id]) return;
+
+    const emptyRow = document.getElementById('empty-restock-row');
+    if (emptyRow) {
+        emptyRow.remove();
+    }
+
     addedItems[item.id] = true;
-    searchResults.style.display = 'none';
+    searchResults.hidden = true;
     searchBar.value = '';
+
     const tr = document.createElement('tr');
     tr.setAttribute('data-item-id', item.id);
     tr.innerHTML = `
-        <td><input type="hidden" name="item_id_${item.id}" value="${item.id}">${item.item_name}</td>
+        <td><input type="hidden" name="item_id_${item.id}" value="${item.id}"><strong class="item-name">${item.item_name}</strong></td>
         <td>${item.category}</td>
-        <td>${item.quantity_in_stock}</td>
-        <td>${item.minimum_stock_level}</td>
-        <td><input type="number" name="restock_${item.id}" min="0" value="0" style="width:80px;"></td>
+        <td><strong class="stock-count">${item.quantity_in_stock}</strong></td>
+        <td><strong class="strong-value">${item.minimum_stock_level}</strong></td>
+        <td><input type="number" name="restock_${item.id}" min="0" value="0" class="table-input restock-amount-input"></td>
         <td><button type="button" class="remove-btn" onclick="removeRow(${item.id})">Remove</button></td>
     `;
     restockTableBody.appendChild(tr);
@@ -162,6 +127,10 @@ function removeRow(itemId) {
     if (row) {
         row.remove();
         delete addedItems[itemId];
+    }
+
+    if (Object.keys(addedItems).length === 0) {
+        restockTableBody.innerHTML = '<tr id="empty-restock-row"><td colspan="6" class="empty-state">Search and select items to restock.</td></tr>';
     }
 }
 </script>

@@ -1,46 +1,28 @@
 {% extends 'base.html' %}
 {% block content %}
-<style>
-    .inventory-title {
-        color: orange;
-        font-size: 2rem;
-        font-weight: bold;
-        margin-bottom: 1rem;
-    }
-    .delete-container {
-        background: white;
-        padding: 2rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        max-width: 500px;
-        margin: 0 auto;
-        text-align: center;
-    }
-    .delete-btn {
-        background-color: #28a745;
-        color: white;
-        border: none;
-        padding: 0.5rem 1.2rem;
-        border-radius: 4px;
-        font-weight: bold;
-        margin-top: 1rem;
-    }
-    .delete-btn:hover {
-        background-color: #218838;
-    }
-    .cancel-link {
-        margin-left: 1rem;
-        color: #333;
-        text-decoration: underline;
-    }
-</style>
-<div class="inventory-title">Delete Inventory Item</div>
-<div class="delete-container">
-    <p>Are you sure you want to delete <strong>{{ item.item_name }}</strong>?</p>
-    <form method="post">
-        {% csrf_token %}
-        <button type="submit" class="delete-btn">Yes, Delete</button>
-        <a href="{% url 'inventory_list' %}" class="cancel-link">Cancel</a>
-    </form>
+{% include 'inventory/_inventory_styles.html' %}
+
+<div class="inv-page inv-narrow">
+    <div class="inv-header">
+        <div>
+            <h2 class="inv-title">Delete Inventory Item</h2>
+            <p class="inv-subtitle">Confirm before removing this item from inventory.</p>
+        </div>
+        <div class="inv-actions">
+            <a href="{% url 'inventory_list' %}" class="btn btn-muted">Inventory List</a>
+        </div>
+    </div>
+
+    <div class="delete-container">
+        <p class="strong-value">Are you sure you want to delete {{ item.item_name }}?</p>
+        <p class="muted">This item will be removed from the inventory list.</p>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-actions center-actions">
+                <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                <a href="{% url 'inventory_list' %}" class="btn btn-muted">Cancel</a>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}

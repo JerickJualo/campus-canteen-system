@@ -1,113 +1,18 @@
 {% extends 'base.html' %}
 {% block content %}
-<style>
-    .restock-page {
-        max-width: 720px;
-        margin: 0 auto;
-        padding: 1rem;
-    }
+{% include 'inventory/_inventory_styles.html' %}
 
-    .page-title {
-        color: #1f2937;
-        font-size: 2rem;
-        font-weight: 700;
-        margin: 0 0 1rem;
-    }
-
-    .restock-card {
-        background: #fff;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 1.25rem;
-    }
-
-    .item-summary {
-        border-bottom: 1px solid #e5e7eb;
-        display: grid;
-        gap: 0.75rem;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        margin-bottom: 1rem;
-        padding-bottom: 1rem;
-    }
-
-    .summary-label {
-        color: #6b7280;
-        font-size: 0.85rem;
-        margin-bottom: 0.25rem;
-    }
-
-    .summary-value {
-        color: #111827;
-        font-size: 1.15rem;
-        font-weight: 800;
-    }
-
-    .restock-form p {
-        margin: 0 0 1rem;
-    }
-
-    .restock-form label {
-        color: #374151;
-        display: block;
-        font-weight: 700;
-        margin-bottom: 0.35rem;
-    }
-
-    .restock-input {
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        box-sizing: border-box;
-        padding: 0.65rem;
-        width: 100%;
-    }
-
-    .form-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-top: 1rem;
-    }
-
-    .btn {
-        border: 1px solid transparent;
-        border-radius: 6px;
-        color: #fff;
-        display: inline-block;
-        font-weight: 700;
-        padding: 0.55rem 0.9rem;
-        text-decoration: none;
-    }
-
-    .btn-success {
-        background: #16a34a;
-    }
-
-    .btn-muted {
-        background: #f3f4f6;
-        border-color: #d1d5db;
-        color: #374151;
-    }
-
-    .help-text {
-        color: #6b7280;
-        margin: 0.75rem 0 0;
-    }
-
-    .errorlist {
-        color: #dc2626;
-        margin: 0 0 0.75rem;
-        padding-left: 1rem;
-    }
-
-    @media (max-width: 700px) {
-        .item-summary {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
-
-<div class="restock-page">
-    <h2 class="page-title">Restock Item</h2>
+<div class="restock-page inv-narrow">
+    <div class="inv-header">
+        <div>
+            <h2 class="page-title">Restock Item</h2>
+            <p class="inv-subtitle">Add new stock without replacing the current quantity.</p>
+        </div>
+        <div class="inv-actions">
+            <a href="{% url 'inventory_list' %}" class="btn btn-muted">Inventory List</a>
+            <a href="{% url 'inventory_history' %}?search={{ item.item_name|urlencode }}" class="btn btn-muted">History</a>
+        </div>
+    </div>
 
     <div class="restock-card">
         <div class="item-summary">
@@ -131,8 +36,7 @@
             <p class="help-text">The entered amount will be added to the current stock.</p>
             <div class="form-actions">
                 <button type="submit" class="btn btn-success">Add Stock</button>
-                <a href="{% url 'inventory_list' %}" class="btn btn-muted">Back to Inventory</a>
-                <a href="{% url 'inventory_history' %}?search={{ item.item_name|urlencode }}" class="btn btn-muted">View History</a>
+                <a href="{% url 'inventory_list' %}" class="btn btn-muted">Cancel</a>
             </div>
         </form>
     </div>
