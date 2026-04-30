@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .inventory-title {
+        color: orange;
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+    .search-bar {
+        width: 100%;
+        max-width: 400px;
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    .search-results {
+        background: #fff;
+        border: 1px solid #ddd;
+        max-width: 400px;
+        margin-bottom: 1rem;
+        border-radius: 4px;
+        position: absolute;
+        z-index: 10;
+    }
+    .search-result-item {
+        padding: 0.5rem;
+        cursor: pointer;
+    }
+    .search-result-item:hover {
+        background: #f8f9fa;
+    }
+    .multi-restock-table {
+        width: 100%;
+        background: white;
+        border-collapse: collapse;
+        margin-bottom: 2rem;
+    }
+    .multi-restock-table th, .multi-restock-table td {
+        border: 1px solid #ddd;
+        padding: 0.6rem;
+        text-align: left;
+    }
+    .multi-restock-table th {
+        background: #f8f9fa;
+    }
+    .remove-btn {
+        color: orange;
+        font-weight: bold;
+        cursor: pointer;
+        border: none;
+        background: none;
+    }
+    .submit-btn {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 0.5rem 1.2rem;
+        border-radius: 4px;
+        font-weight: bold;
+        margin-top: 1rem;
+    }
+    .submit-btn:hover {
+        background-color: #218838;
+    }
+    .success-message {
+        color: #28a745;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+</style>
+<div class="inventory-title">Multi-item Restock</div>
+{% if success %}
+    <div class="success-message">Successfully restocked: {{ updated|join:', ' }}</div>
+{% endif %}
+<input type="text" id="search-bar" class="search-bar" placeholder="Search for items to restock..." autocomplete="off">
+<div id="search-results" class="search-results" style="display:none;"></div>
+<form method="post" id="multi-restock-form">
+    {% csrf_token %}
+    <table class="multi-restock-table" id="restock-table">
+        <thead>
+            <tr>
+                <th>Item Name</th>
+                <th>Category</th>
+                <th>Current Qty</th>
+                <th>Min Stock</th>
+                <th>Restock Amount</th>
+                <th>Remove</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Rows added dynamically -->
+        </tbody>
+    </table>
+    <button type="submit" class="submit-btn">Submit Restock</button>
+</form>
+<script>
+const searchBar = document.getElementById('search-bar');
+const searchResults = document.getElementById('search-results');
+const restockTableBody = document.querySelector('#restock-table tbody');
+let addedItems = {};
+
+searchBar.addEventListener('input', function() {
+    const query = this.value.trim();
+    if (query.length === 0) {
+        searchResults.style.display = 'none';
+        searchResults.innerHTML = '';
+        return;
+    }
+    fetch(`/inventory/inventory-search/?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            searchResults.innerHTML = '';
+            if (data.results.length > 0) {
+                data.results.forEach(item => {
+                    if (!addedItems[item.id]) {
+                        const div = document.createElement('div');
+                        div.className = 'search-result-item';
+                        div.textContent = `${item.item_name} (${item.category})`;
+                        div.onclick = () => addItemToTable(item);
+                        searchResults.appendChild(div);
+                    }
+                });
+                searchResults.style.display = 'block';
+            } else {
+                searchResults.style.display = 'none';
+            }
+        });
+});
+
+document.addEventListener('click', function(e) {
+    if (!searchBar.contains(e.target) && !searchResults.contains(e.target)) {
+        searchResults.style.display = 'none';
+    }
+});
+
+function addItemToTable(item) {
+    if (addedItems[item.id]) return;
+    addedItems[item.id] = true;
+    searchResults.style.display = 'none';
+    searchBar.value = '';
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-item-id', item.id);
+    tr.innerHTML = `
+        <td><input type="hidden" name="item_id_${item.id}" value="${item.id}">${item.item_name}</td>
+        <td>${item.category}</td>
+        <td>${item.quantity_in_stock}</td>
+        <td>${item.minimum_stock_level}</td>
+        <td><input type="number" name="restock_${item.id}" min="0" value="0" style="width:80px;"></td>
+        <td><button type="button" class="remove-btn" onclick="removeRow(${item.id})">Remove</button></td>
+    `;
+    restockTableBody.appendChild(tr);
+}
+
+function removeRow(itemId) {
+    const row = document.querySelector(`tr[data-item-id='${itemId}']`);
+    if (row) {
+        row.remove();
+        delete addedItems[itemId];
+    }
+}
+</script>
+{% endblock %}

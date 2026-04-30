@@ -1,3 +1,46 @@
+# Multi-item Restock View and AJAX Search
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
+def multi_item_restock(request):
+    items = InventoryItem.objects.all().order_by('item_name')
+    if request.method == 'POST':
+        # Process restock data
+        restock_data = request.POST
+        updated = []
+        for key in restock_data:
+            if key.startswith('restock_'):
+                pk = key.split('_')[1]
+                try:
+                    item = InventoryItem.objects.get(pk=pk)
+                    add_qty = int(restock_data[key])
+                    if add_qty > 0:
+                        item.quantity_in_stock += add_qty
+                        item.save()
+                        updated.append(item.item_name)
+                except (InventoryItem.DoesNotExist, ValueError):
+                    continue
+        return render(request, 'inventory/multi_item_restock.html', {
+            'items': items,
+            'success': True,
+            'updated': updated,
+        })
+    return render(request, 'inventory/multi_item_restock.html', {'items': items})
+
+# AJAX search endpoint for inventory items
+def inventory_search(request):
+    q = request.GET.get('q', '').lower()
+    results = []
+    for item in InventoryItem.objects.all():
+        if q in item.item_name.lower() or q in item.category.lower():
+            results.append({
+                'id': item.pk,
+                'item_name': item.item_name,
+                'category': item.category,
+                'quantity_in_stock': item.quantity_in_stock,
+                'minimum_stock_level': item.minimum_stock_level,
+            })
+    return JsonResponse({'results': results})
 from django.shortcuts import render, redirect
 from .models import InventoryItem
 from django import forms
