@@ -111,11 +111,29 @@ def checkout(request):
 
         change = cash - total
 
+        for item_id, item in cart.items():
+            inventory_item = InventoryItem.objects.get(id=item_id)
+
+            if item['quantity'] > inventory_item.quantity_in_stock:
+                return render(request, 'cashier/cashier_home.html', {
+                    'error': f'Not enough stock for {inventory_item.item_name}.',
+                    'items': InventoryItem.objects.filter(quantity_in_stock__gt=0),
+                    'cart': cart,
+                    'total': total
+                })
+
         # deduct stock
+        low_stock_alerts = []
+
         for item_id, item in cart.items():
             inventory_item = InventoryItem.objects.get(id=item_id)
             inventory_item.quantity_in_stock -= item['quantity']
             inventory_item.save()
+
+            if inventory_item.quantity_in_stock <= inventory_item.minimum_stock_level:
+                low_stock_alerts.append(
+                    f"{inventory_item.item_name} is low on stock ({inventory_item.quantity_in_stock} left)"
+                )
 
         # clear cart after successful transaction
         request.session['cart'] = {}
@@ -125,8 +143,9 @@ def checkout(request):
             'change': change,
             'cash': cash,
             'total': total,
-            'items': InventoryItem.objects.all(),
-            'cart': {}
+            'items': InventoryItem.objects.filter(quantity_in_stock__gt=0),
+            'cart': {},
+            'low_stock_alerts': low_stock_alerts,
         })
 
     return redirect('cashier')

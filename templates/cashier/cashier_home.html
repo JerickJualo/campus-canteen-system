@@ -51,7 +51,16 @@
                     <td class="item-name">{{ item.item_name }}</td>
                     <td>{{ item.category }}</td>
                     <td class="strong-value">PHP {{ item.unit_price }}</td>
-                    <td class="stock-count">{{ item.quantity_in_stock }}</td>
+                    <td>
+                        <strong class="stock-count">{{ item.quantity_in_stock }}</strong>
+
+                        {% if item.quantity_in_stock <= item.minimum_stock_level %}
+                            <div style="margin-top: 6px;">
+                                <span class="badge badge-low">Low Stock</span>
+                            </div>
+                        {% endif %}
+                    </td>
+
                     <td>
                         <div style="display: flex; gap: 8px;">
                             <a href="{% url 'add_to_cart' item.id %}?search={{ request.GET.search }}"
@@ -71,8 +80,8 @@
                 {% endfor %}
             </tbody>
         </table>
-
-        <div class="panel" style="margin-top: 20px;">
+    </div> 
+        <div class="panel" style="margin-top: 15px;">
             <div class="panel-header">
                 <h3 class="panel-title">Current Order</h3>
             </div>
@@ -133,24 +142,33 @@
                     </div>
                 </form>
 
+            <div style="margin-top: 15px;">
                 {% if error %}
                 <div class="inv-message error">
-                {{ error }}
+                    {{ error }}
                 </div>
                 {% endif %}
 
                 {% if success %}
                 <div class="inv-message success">
-                {{ success }}
+                    {{ success }}
                 </div>
                 {% endif %}
 
                 {% if change %}
                 <div class="inv-message success">
-                Change: PHP {{ change|floatformat:2 }}
+                    Change: PHP {{ change|floatformat:2 }}
                 </div>
                 {% endif %}
 
+                {% if low_stock_alerts %}
+                    {% for alert in low_stock_alerts %}
+                    <div class="inv-message warning">
+                        {{ alert }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
             </div>
         </div>
     </div>
