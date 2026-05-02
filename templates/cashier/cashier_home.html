@@ -20,13 +20,7 @@
         <form method="GET" class="filter-form">
             <div class="filter-field">
                 <label for="search">Search Item</label>
-                <input
-                    type="text"
-                    id="search"
-                    name="search"
-                    placeholder="Search item"
-                    value="{{ request.GET.search }}"
-                >
+                <input type="text" id="search" name="search" placeholder="Search item" value="{{ request.GET.search }}">
             </div>
             <button type="submit" class="btn btn-primary">Search</button>
             <a href="{% url 'cashier' %}" class="btn btn-muted">Reset</a>
@@ -54,128 +48,212 @@
                     <td>
                         <strong class="stock-count">{{ item.quantity_in_stock }}</strong>
 
-                        {% if item.quantity_in_stock <= item.minimum_stock_level %}
-                            <div style="margin-top: 6px;">
-                                <span class="badge badge-low">Low Stock</span>
-                            </div>
-                        {% endif %}
-                    </td>
+                        {% if item.quantity_in_stock <= item.minimum_stock_level %} <div style="margin-top: 6px;">
+                            <span class="badge badge-low">Low Stock</span>
+    </div>
+    {% endif %}
+    </td>
 
-                    <td>
-                        <div style="display: flex; gap: 8px;">
-                            <a href="{% url 'add_to_cart' item.id %}?search={{ request.GET.search }}"
-                                class="btn btn-success">+</a>
+    <td>
+        <div style="display: flex; gap: 8px;">
+            <a href="{% url 'add_to_cart' item.id %}?search={{ request.GET.search }}" class="btn btn-success">+</a>
 
-                            <a href="{% url 'decrease_quantity' item.id %}?search={{ request.GET.search }}"
-                                class="btn btn-danger">−</a>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5" class="empty-state">
-                        No available items found.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div> 
-        <div class="panel" style="margin-top: 15px;">
-            <div class="panel-header">
-                <h3 class="panel-title">Current Order</h3>
+            <a href="{% url 'decrease_quantity' item.id %}?search={{ request.GET.search }}" class="btn btn-danger">−</a>
+        </div>
+    </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="5" class="empty-state">
+            No available items found.
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    </table>
+</div>
+<div class="panel" style="margin-top: 15px;">
+    <div class="panel-header">
+        <h3 class="panel-title">Current Order</h3>
+    </div>
+
+    <table class="inventory-table">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Subtotal</th>
+                <th>Remove</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for key, item in cart.items %}
+            <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>PHP {{ item.price|floatformat:2 }}</td>
+                <td>
+                    <a href="{% url 'remove_from_cart' key %}?search={{ request.GET.search }}" class="btn btn-danger">
+                        Remove
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="empty-state">
+                    No items in cart.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="padding: 20px;">
+        <h3>Total: PHP {{ total }}</h3>
+        <form method="POST" action="{% url 'checkout' %}" style="margin-top: 20px;">
+            {% csrf_token %}
+
+            <div class="filter-field" style="max-width: 300px;">
+                <label>Customer Payment</label>
+                <input type="number" step="0.01" name="cash" required placeholder="Enter payment amount">
             </div>
-
-            <table class="inventory-table">
-                <thead>
-                    <tr>
-                        <th>Item</th>
-                        <th>Qty</th>
-                        <th>Subtotal</th>
-                        <th>Remove</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% for key, item in cart.items %}
-                    <tr>
-                        <td>{{ item.name }}</td>
-                        <td>{{ item.quantity }}</td>
-                        <td>PHP {{ item.price|floatformat:2 }}</td>
-                        <td>
-                            <a href="{% url 'remove_from_cart' key %}?search={{ request.GET.search }}"
-                                class="btn btn-danger">
-                                Remove
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" class="empty-state">
-                            No items in cart.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-
-            <div style="padding: 20px;">
-                <h3>Total: PHP {{ total }}</h3>
-                <form method="POST" action="{% url 'checkout' %}" style="margin-top: 20px;">
-                    {% csrf_token %}
-
-                    <div class="filter-field" style="max-width: 300px;">
-                        <label>Customer Payment</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            name="cash"
-                            required
-                            placeholder="Enter payment amount"
-                     >
-                    </div>
-
-                    <div style="margin-top: 15px;">
-                        <button type="submit" class="btn btn-success">
-                            Complete Transaction
-                        </button>
-                    </div>
-                </form>
 
             <div style="margin-top: 15px;">
-                {% if error %}
-                <div class="inv-message error">
-                    {{ error }}
-                </div>
-                {% endif %}
-
-                {% if success %}
-                <div class="inv-message success">
-                    {{ success }}
-                </div>
-                {% endif %}
-
-                {% if change %}
-                <div class="inv-message success">
-                    Change: PHP {{ change|floatformat:2 }}
-                </div>
-                {% endif %}
-
-                {% if low_stock_alerts %}
-                    {% for alert in low_stock_alerts %}
-                    <div class="inv-message warning">
-                        {{ alert }}
-                    </div>
-                    {% endfor %}
-                {% endif %}
+                <button type="submit" class="btn btn-success">
+                    Complete Transaction
+                </button>
             </div>
+        </form>
+
+        <div style="margin-top: 15px;">
+            {% if error %}
+            <div class="inv-message error">
+                {{ error }}
             </div>
+            {% endif %}
+
+            {% if success %}
+            <div class="inv-message success">
+                {{ success }}
+            </div>
+            {% endif %}
+
+            {% if change %}
+            <div class="inv-message success">
+                Change: PHP {{ change|floatformat:2 }}
+            </div>
+            {% endif %}
+
+            {% if low_stock_alerts %}
+            {% for alert in low_stock_alerts %}
+            <div class="inv-message warning">
+                {{ alert }}
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            {% if receipt_id %}
+            <div class="inv-message success" style="margin-top: 15px;">
+                <div style="margin-bottom: 8px;">Receipt #{{ receipt_number }} generated</div>
+                <button type="button" class="btn btn-primary" style="margin-top: 8px;"
+                    onclick="showReceiptModal({{ receipt_id }})">
+                    View Receipt
+                </button>
+            </div>
+            {% endif %}
         </div>
     </div>
+</div>
+</div>
 </div>
 
 <div class="inventory-actions" style="margin-top: 1.5rem; padding-left: 0.25rem;">
     <a href="{% url 'daily_report' %}" class="btn btn-primary">Daily Report</a>
     <a href="{% url 'monthly_report' %}" class="btn btn-muted">Monthly Report</a>
 </div>
+
+<!-- Receipt Modal -->
+<div id="receiptModal"
+    style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div
+        style="position: relative; margin: 5% auto; padding: 20px; width: 90%; max-width: 400px; background-color: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">
+            <h3 style="margin: 0; font-size: 18px;">Receipt</h3>
+            <button type="button" onclick="closeReceiptModal()"
+                style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+        </div>
+        <div id="receiptContent">
+            <!-- Receipt content will be loaded here -->
+        </div>
+        <div style="margin-top: 20px; text-align: center;">
+            <button type="button" onclick="printReceipt()" class="btn btn-primary"
+                style="margin-right: 10px;">Print</button>
+            <button type="button" onclick="closeReceiptModal()" class="btn btn-muted">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showReceiptModal(receiptId) {
+        // Show modal
+        document.getElementById('receiptModal').style.display = 'block';
+
+        // Fetch receipt content
+        fetch(`/cashier/receipt/${receiptId}/`)
+            .then(response => response.text())
+            .then(html => {
+                // Extract the receipt container from the HTML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const receiptContainer = doc.querySelector('.receipt-container');
+
+                if (receiptContainer) {
+                    document.getElementById('receiptContent').innerHTML = receiptContainer.outerHTML;
+                } else {
+                    document.getElementById('receiptContent').innerHTML = '<p>Error loading receipt</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('receiptContent').innerHTML = '<p>Error loading receipt</p>';
+            });
+    }
+
+    function closeReceiptModal() {
+        document.getElementById('receiptModal').style.display = 'none';
+    }
+
+    function printReceipt() {
+        const receiptContent = document.getElementById('receiptContent').innerHTML;
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(
+            '<html>' +
+            '<head>' +
+            '<title>Receipt</title>' +
+            '<style>' +
+            'body { font-family: "Courier New", monospace; margin: 20px; }' +
+            '.receipt-container { max-width: 400px; margin: 0 auto; }' +
+            '@media print { body { margin: 0; }' +
+            '</style>' +
+            '</head>' +
+            '<body>' +
+            receiptContent +
+            '<script>window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 1000); }<\/script>' +
+            '</body>' +
+            '</html>'
+        );
+        printWindow.document.close();
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function (event) {
+        const modal = document.getElementById('receiptModal');
+        if (event.target == modal) {
+            closeReceiptModal();
+        }
+    }
+</script>
+
 {% endblock %}
