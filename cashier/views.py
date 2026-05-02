@@ -7,7 +7,7 @@ from .models import Order
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from cashier.models import Sale, SaleItem
+from cashier.models import Sale, SaleItem, Receipt
 from inventory.models import InventoryItem
 from django.utils import timezone
 from django.utils.timezone import now
@@ -164,6 +164,14 @@ def checkout(request):
         # clear cart after successful transaction
         request.session['cart'] = {}
 
+        # Create receipt for this transaction
+        receipt = Receipt.objects.create(
+            sale=sale,
+            receipt_number=Receipt.generate_receipt_number(),
+            cashier_name='Cashier',
+            payment_method='Cash'
+        )
+
         return render(request, 'cashier/cashier_home.html', {
             'success': 'Transaction completed successfully.',
             'change': change,
@@ -172,6 +180,8 @@ def checkout(request):
             'items': InventoryItem.objects.filter(quantity_in_stock__gt=0),
             'cart': {},
             'low_stock_alerts': low_stock_alerts,
+            'receipt_id': receipt.id,
+            'receipt_number': receipt.receipt_number,
         })
 
     return redirect('cashier')
@@ -371,3 +381,35 @@ def delete_monthly_report(request):
         messages.success(request, f'Successfully deleted {count} sales records for {today.strftime("%B %Y")}.')
         return redirect('monthly_report')
     return redirect('monthly_report')
+
+
+def generate_receipt(request, sale_id):
+    sale = get_object_or_404(Sale, id=sale_id)
+    
+    # Check if receipt already exists
+    if hasattr(sale, 'receipt'):
+        receipt = sale.receipt
+    else:
+        # Create new receipt
+        receipt = Receipt.objects.create(
+            sale=sale,
+            receipt_number=Receipt.generate_receipt_number(),
+            cashier_name='Cashier',
+            payment_method='Cash'
+        )
+    
+    # Get sale items with calculated subtotals
+    sale_items = SaleItem.objects.filter(sale=sale)
+    sale_items_with_subtotal = []
+    for item in sale_items:
+        item.subtotal = item.quantity * item.price
+        sale_items_with_subtotal.append(item)
+    
+    context = {
+        'receipt': receipt,
+        'sale': sale,
+        'sale_items': sale_items_with_subtotal,
+        'total_items': sale_items.aggregate(Sum('quantity'))['quantity__sum'] or 0,
+    }
+    
+    return render(request, 'cashier/receipt.html', context)

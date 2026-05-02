@@ -8,7 +8,8 @@ from .views import (
     remove_from_cart,
     increase_quantity,
     decrease_quantity,
-    checkout
+    checkout,
+    generate_receipt
 )
 
 urlpatterns = [
@@ -18,6 +19,7 @@ urlpatterns = [
     path('increase/<int:item_id>/', increase_quantity, name='increase_quantity'),
     path('decrease/<int:item_id>/', decrease_quantity, name='decrease_quantity'),
     path('checkout/', checkout, name='checkout'),
+    path('receipt/<int:sale_id>/', generate_receipt, name='generate_receipt'),
     path('reports/daily/', views.daily_report, name='daily_report'),
     path('reports/monthly/', views.monthly_report, name='monthly_report'),
     path('reports/daily/delete/', views.delete_daily_report, name='delete_daily_report'),
