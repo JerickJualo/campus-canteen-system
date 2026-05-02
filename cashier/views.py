@@ -1,5 +1,19 @@
+from collections import _OrderedDictItemsView, OrderedDict
+from datetime import timedelta
+import os
+
+from config import settings
+from .models import Order   
+from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from cashier.models import Sale, SaleItem
 from inventory.models import InventoryItem
+from django.utils import timezone
+from django.utils.timezone import now
+from django.db.models import Sum, F
+from django import forms
+import django.db.models as models
 
 def cashier_home(request):
     search_query = request.GET.get('search', '').strip()
@@ -122,8 +136,13 @@ def checkout(request):
                     'total': total
                 })
 
-        # deduct stock
+        # deduct stock and save the completed sale for reporting
         low_stock_alerts = []
+
+        sale = Sale.objects.create(
+            total_amount=total,
+            created_at=timezone.now()
+        )
 
         for item_id, item in cart.items():
             inventory_item = InventoryItem.objects.get(id=item_id)
@@ -134,6 +153,13 @@ def checkout(request):
                 low_stock_alerts.append(
                     f"{inventory_item.item_name} is low on stock ({inventory_item.quantity_in_stock} left)"
                 )
+
+            SaleItem.objects.create(
+                sale=sale,
+                item_name=item['name'],
+                quantity=item['quantity'],
+                price=item['price']
+            )
 
         # clear cart after successful transaction
         request.session['cart'] = {}
@@ -149,3 +175,199 @@ def checkout(request):
         })
 
     return redirect('cashier')
+
+def complete_transaction(request):
+    if request.method == "POST":
+        cart = request.session.get('cart', [])
+        
+        total = sum(item['price'] * item['qty'] for item in cart)
+
+        sale = Sale.objects.create(
+            total_amount=total,
+            created_at=timezone.now()
+        )
+
+        # SAVE ITEMS
+        for item in cart:
+            SaleItem.objects.create(
+                sale=sale,
+                item_name=item['name'],
+                quantity=item['qty'],
+                price=item['price']
+            )
+
+        # CLEAR CART
+        request.session['cart'] = []
+
+        return redirect('cashier')
+    
+
+
+def daily_report(request):
+    from django.db.models import Q, F
+    from collections import defaultdict
+    
+    today = now()
+
+    sales = Sale.objects.filter(
+        created_at__date=today.date()
+    ).order_by('-created_at')
+
+    total = sales.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    
+    # Get all sale items for today
+    sale_items = SaleItem.objects.filter(
+        sale__created_at__date=today.date()
+    )
+    
+    # Total items sold (sum of quantities)
+    total_items_sold = sale_items.aggregate(Sum('quantity'))['quantity__sum'] or 0
+    
+    # Best-selling items for the day
+    from django.db.models import Sum as DjangoSum
+    best_sellers = sale_items.values('item_name').annotate(
+        total_qty=DjangoSum('quantity'),
+        total_revenue=DjangoSum(F('quantity') * F('price'), output_field=models.DecimalField())
+    ).order_by('-total_qty')[:5]
+    
+    # All items sold today with quantities
+    items_sold = sale_items.values('item_name').annotate(
+        total_qty=DjangoSum('quantity'),
+        unit_price=F('price'),
+        total_revenue=DjangoSum(F('quantity') * F('price'), output_field=models.DecimalField())
+    ).order_by('-total_qty')
+    
+    # Low-stock items
+    low_stock_items = InventoryItem.objects.filter(
+        quantity_in_stock__lte=F('minimum_stock_level')
+    ).values('item_name', 'quantity_in_stock', 'minimum_stock_level')
+    
+    # Fast-moving items (items sold today with current stock)
+    sold_item_names = set(sale_items.values_list('item_name', flat=True))
+    fast_moving_items = InventoryItem.objects.filter(
+        item_name__in=sold_item_names
+    ).values('item_name', 'quantity_in_stock', 'unit_price').order_by('-quantity_in_stock')
+
+    return render(request, 'report/daily.html', {
+        'sales': sales,
+        'total': total,
+        'report_date': today.date(),
+        'transaction_count': sales.count(),
+        'total_items_sold': total_items_sold,
+        'best_sellers': best_sellers,
+        'items_sold': items_sold,
+        'low_stock_items': low_stock_items,
+        'fast_moving_items': fast_moving_items,
+    })
+    
+def monthly_report(request):
+    from django.db.models import Sum as DjangoSum, Count
+    from collections import defaultdict
+    
+    today = now()
+
+    sales = Sale.objects.filter(
+        created_at__year=today.year,
+        created_at__month=today.month
+    ).order_by('-created_at')
+
+    total = sales.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    
+    # Get all sale items for the month
+    sale_items = SaleItem.objects.filter(
+        sale__created_at__year=today.year,
+        sale__created_at__month=today.month
+    )
+    
+    # Total items sold for the month
+    total_items_sold = sale_items.aggregate(Sum('quantity'))['quantity__sum'] or 0
+    
+    # Top-selling items of the month
+    best_sellers = sale_items.values('item_name').annotate(
+        total_qty=DjangoSum('quantity'),
+        total_revenue=DjangoSum(F('quantity') * F('price'), output_field=models.DecimalField())
+    ).order_by('-total_qty')[:5]
+    
+    # Lowest-selling items
+    lowest_sellers = sale_items.values('item_name').annotate(
+        total_qty=DjangoSum('quantity'),
+        total_revenue=DjangoSum(F('quantity') * F('price'), output_field=models.DecimalField())
+    ).order_by('total_qty')[:5]
+    
+    # Daily sales summary
+    from inventory.models import RestockHistory
+    daily_sales = sale_items.values('sale__created_at__date').annotate(
+        daily_qty=DjangoSum('quantity'),
+        daily_revenue=DjangoSum(F('quantity') * F('price'), output_field=models.DecimalField())
+    ).order_by('-sale__created_at__date')
+    
+    # Total restocks made during the month
+    restocks = RestockHistory.objects.filter(
+        created_at__year=today.year,
+        created_at__month=today.month
+    )
+    total_restocks_count = restocks.count()
+    total_quantity_restocked = restocks.aggregate(Sum('quantity_added'))['quantity_added__sum'] or 0
+    
+    # Items that frequently ran low or out of stock (from restock history)
+    low_stock_items = restocks.values('inventory_item__item_name').annotate(
+        restock_count=Count('id'),
+        total_qty_added=DjangoSum('quantity_added')
+    ).order_by('-restock_count')[:5]
+
+    return render(request, 'report/monthly.html', {
+        'sales': sales,
+        'total': total,
+        'month': today.month,
+        'year': today.year,
+        'month_name': today.strftime('%B'),
+        'transaction_count': sales.count(),
+        'total_items_sold': total_items_sold,
+        'best_sellers': best_sellers,
+        'lowest_sellers': lowest_sellers,
+        'daily_sales': daily_sales,
+        'low_stock_items': low_stock_items,
+        'total_restocks_count': total_restocks_count,
+        'total_quantity_restocked': total_quantity_restocked,
+    })
+
+
+def delete_daily_report(request):
+    if request.method == 'POST':
+        today = now().date()
+        # Delete all sales for today
+        sales_to_delete = Sale.objects.filter(created_at__date=today)
+        count = sales_to_delete.count()
+        sales_to_delete.delete()
+        
+        # Also delete related sale items (cascade should handle this, but let's be explicit)
+        SaleItem.objects.filter(sale__created_at__date=today).delete()
+        
+        messages.success(request, f'Successfully deleted {count} sales records for today.')
+        return redirect('daily_report')
+    return redirect('daily_report')
+
+
+def delete_monthly_report(request):
+    if request.method == 'POST':
+        today = now()
+        current_month = today.month
+        current_year = today.year
+        
+        # Delete all sales for the current month
+        sales_to_delete = Sale.objects.filter(
+            created_at__year=current_year,
+            created_at__month=current_month
+        )
+        count = sales_to_delete.count()
+        sales_to_delete.delete()
+        
+        # Also delete related sale items (cascade should handle this, but let's be explicit)
+        SaleItem.objects.filter(
+            sale__created_at__year=current_year,
+            sale__created_at__month=current_month
+        ).delete()
+        
+        messages.success(request, f'Successfully deleted {count} sales records for {today.strftime("%B %Y")}.')
+        return redirect('monthly_report')
+    return redirect('monthly_report')

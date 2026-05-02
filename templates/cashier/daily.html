@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Daily Report</title>
+</head>
+<body>
+    <h1>Daily Report</h1>
+
+    <p>Date: {{ report_date }}</p>
+    <p>Total Sales: ₱{{ total_sales }}</p>
+    <p>Number of Orders: {{ total_orders }}</p>
+
+    <h2>Orders</h2>
+    <ul>
+        {% for order in orders %}
+            <li>Order #{{ order.id }} - ₱{{ order.total_amount }} - {{ order.created_at }}</li>
+        {% empty %}
+            <li>No orders found today.</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
+
+<a href="/cashier/" class="back-btn">
+    ⬅ Back to Cashier

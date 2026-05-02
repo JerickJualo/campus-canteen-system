@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Monthly Sales Report</h2>
+            <p class="page-subtitle">{{ month_name }} {{ year }}</p>
+        </div>
+        <div class="report-actions">
+            <a class="btn-report btn-secondary" href="{% url 'cashier' %}">← Back to Cashier</a>
+            <form method="post" action="{% url 'delete_monthly_report' %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete all sales data for this month? This action cannot be undone.')">
+                {% csrf_token %}
+                <button type="submit" class="btn-report btn-danger">Delete Monthly Report</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="report-summary-grid">
+        <div class="report-card">
+            <span class="report-label">Transactions</span>
+            <span class="report-value">{{ transaction_count }}</span>
+        </div>
+        <div class="report-card">
+            <span class="report-label">Total Revenue</span>
+            <span class="report-value">PHP {{ total|floatformat:2 }}</span>
+        </div>
+        <div class="report-card">
+            <span class="report-label">Items Sold</span>
+            <span class="report-value">{{ total_items_sold }}</span>
+        </div>
+        <div class="report-card">
+            <span class="report-label">Restocks</span>
+            <span class="report-value">{{ total_restocks_count }}</span>
+        </div>
+    </div>
+
+    <!-- Top-Selling Items -->
+    {% if best_sellers %}
+    <div class="report-section">
+        <h3>🏆 Top-Selling Items</h3>
+        <div class="table-card">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Quantity Sold</th>
+                        <th>Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in best_sellers %}
+                        <tr>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.total_qty }}</td>
+                            <td>PHP {{ item.total_revenue|floatformat:2 }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Lowest-Selling Items -->
+    {% if lowest_sellers %}
+    <div class="report-section">
+        <h3>📉 Lowest-Selling Items</h3>
+        <div class="table-card">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Quantity Sold</th>
+                        <th>Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in lowest_sellers %}
+                        <tr>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.total_qty }}</td>
+                            <td>PHP {{ item.total_revenue|floatformat:2 }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Daily Sales Summary -->
+    {% if daily_sales %}
+    <div class="report-section">
+        <h3>📅 Daily Sales Summary</h3>
+        <div class="table-card">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Items Sold</th>
+                        <th>Daily Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in daily_sales %}
+                        <tr>
+                            <td>{{ day.sale__created_at__date|date:"l, F j, Y" }}</td>
+                            <td>{{ day.daily_qty }}</td>
+                            <td>PHP {{ day.daily_revenue|floatformat:2 }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="3">No daily sales data</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Restocking Summary -->
+    <div class="report-section">
+        <h3>📦 Restocking Summary</h3>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
+            <div class="report-card">
+                <span class="report-label">Total Restocks</span>
+                <span class="report-value">{{ total_restocks_count }}</span>
+            </div>
+            <div class="report-card">
+                <span class="report-label">Total Qty Restocked</span>
+                <span class="report-value">{{ total_quantity_restocked }}</span>
+            </div>
+        </div>
+
+        <!-- Items Frequently Low on Stock -->
+        {% if low_stock_items %}
+        <div style="margin-top: 1rem;">
+            <h4 style="color: #dc2626; font-size: 1rem; margin-bottom: 0.75rem;">⚠ Items Frequently Low/Out of Stock</h4>
+            <div class="table-card">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Times Restocked</th>
+                            <th>Total Qty Added</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in low_stock_items %}
+                            <tr class="alert-row">
+                                <td>{{ item.inventory_item__item_name }}</td>
+                                <td>{{ item.restock_count }}</td>
+                                <td>{{ item.total_qty_added }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Transactions List -->
+    <div class="report-section">
+        <h3>Transaction Details</h3>
+        <div class="table-card">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Transaction ID</th>
+                        <th>Total Amount</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sale in sales %}
+                        <tr>
+                            <td>#{{ sale.id }}</td>
+                            <td>PHP {{ sale.total_amount|floatformat:2 }}</td>
+                            <td>{{ sale.created_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="3">No transactions this month</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
