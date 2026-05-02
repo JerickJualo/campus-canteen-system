@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Daily Sales Report</h2>
+            <p class="page-subtitle">{{ report_date|date:"l, F j, Y" }}</p>
+        </div>
+        <div class="report-actions">
+            <a class="btn-report btn-secondary" href="{% url 'cashier' %}">← Back to Cashier</a>
+            <form method="post" action="{% url 'delete_daily_report' %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete all sales data for today? This action cannot be undone.')">
+                {% csrf_token %}
+                <button type="submit" class="btn-report btn-danger">Delete Today's Report</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="report-summary-grid">
+        <div class="report-card">
+            <span class="report-label">Total Transactions</span>
+            <span class="report-value">{{ transaction_count }}</span>
+        </div>
+        <div class="report-card">
+            <span class="report-label">Total Revenue</span>
+            <span class="report-value">PHP {{ total|floatformat:2 }}</span>
+        </div>
+        <div class="report-card">
+            <span class="report-label">Items Sold</span>
+            <span class="report-value">{{ total_items_sold }}</span>
+        </div>
+    </div>
+
+    <!-- Best-Selling Items -->
+    {% if best_sellers %}
+    <div class="report-section">
+        <h3>🏆 Best-Selling Items</h3>
+        <div class="table-card">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Quantity Sold</th>
+                        <th>Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in best_sellers %}
+                        <tr>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.total_qty }}</td>
+                            <td>PHP {{ item.total_revenue|floatformat:2 }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- All Items Sold Breakdown -->
+    {% if items_sold %}
+    <div class="report-section">
+        <h3>Sales Breakdown by Item</h3>
+        <div class="table-card">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Quantity Sold</th>
+                        <th>Unit Price</th>
+                        <th>Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items_sold %}
+                        <tr>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.total_qty }}</td>
+                            <td>PHP {{ item.unit_price|floatformat:2 }}</td>
+                            <td>PHP {{ item.total_revenue|floatformat:2 }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Low-Stock Items Alert -->
+    {% if low_stock_items %}
+    <div class="report-section alert-section">
+        <h3>⚠ Low-Stock Items</h3>
+        <div class="table-card">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Current Stock</th>
+                        <th>Minimum Level</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in low_stock_items %}
+                        <tr class="alert-row">
+                            <td>{{ item.item_name }}</td>
+                            <td><strong>{{ item.quantity_in_stock }}</strong></td>
+                            <td>{{ item.minimum_stock_level }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Fast-Moving Items -->
+    {% if fast_moving_items %}
+    <div class="report-section success-section">
+        <h3>🚀 Fast-Moving Items (Remaining Stock)</h3>
+        <div class="table-card">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Current Stock</th>
+                        <th>Unit Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in fast_moving_items %}
+                        <tr>
+                            <td>{{ item.item_name }}</td>
+                            <td><strong>{{ item.quantity_in_stock }}</strong></td>
+                            <td>PHP {{ item.unit_price|floatformat:2 }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Transaction Details -->
+    <div class="report-section">
+        <h3>Transaction Details</h3>
+        <div class="table-card">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Transaction ID</th>
+                        <th>Total Amount</th>
+                        <th>Date & Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sale in sales %}
+                        <tr>
+                            <td>#{{ sale.id }}</td>
+                            <td>PHP {{ sale.total_amount|floatformat:2 }}</td>
+                            <td>{{ sale.created_at|date:"H:i:s" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="3">No transactions today</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

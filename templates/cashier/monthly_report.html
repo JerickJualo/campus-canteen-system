@@ -1,0 +1,23 @@
+<h2>Monthly Sales ({{ month }}/{{ year }})</h2>
+
+<table border="1">
+<tr>
+    <th>ID</th>
+    <th>Total</th>
+    <th>Date</th>
+</tr>
+
+{% for sale in sales %}
+<tr>
+    <td>{{ sale.id }}</td>
+    <td>PHP {{ sale.total_amount }}</td>
+    <td>{{ sale.created_at }}</td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="3">No sales this month</td>
+</tr>
+{% endfor %}
+</table>
+
+<h3>Total: PHP {{ total }}</h3>
