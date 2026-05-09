@@ -14,6 +14,7 @@ from django.utils.timezone import now
 from django.db.models import Sum, F
 from django import forms
 import django.db.models as models
+from django.http import JsonResponse
 
 def cashier_home(request):
     search_query = request.GET.get('search', '').strip()
@@ -34,6 +35,28 @@ def cashier_home(request):
         'cart': cart,
         'total': total,
     })
+
+
+def cashier_search(request):
+    query = request.GET.get('q', '').strip()
+
+    items = InventoryItem.objects.filter(
+        quantity_in_stock__gt=0,
+        item_name__icontains=query
+    )[:8]
+
+    results = []
+
+    for item in items:
+        results.append({
+            'id': item.id,
+            'item_name': item.item_name,
+            'category': item.category,
+            'price': str(item.unit_price),
+            'stock': item.quantity_in_stock,
+        })
+
+    return JsonResponse({'results': results})
 
 
 def add_to_cart(request, item_id):
@@ -176,7 +199,7 @@ def checkout(request):
             'success': 'Transaction completed successfully.',
             'change': change,
             'cash': cash,
-            'total': total,
+            'total': 0,
             'items': InventoryItem.objects.filter(quantity_in_stock__gt=0),
             'cart': {},
             'low_stock_alerts': low_stock_alerts,
