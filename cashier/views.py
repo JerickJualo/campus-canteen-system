@@ -14,6 +14,7 @@ from django.utils.timezone import now
 from django.db.models import Sum, F
 from django import forms
 import django.db.models as models
+from django.http import JsonResponse
 
 def cashier_home(request):
     search_query = request.GET.get('search', '').strip()
@@ -36,21 +37,48 @@ def cashier_home(request):
     })
 
 
+def cashier_search(request):
+    query = request.GET.get('q', '').strip()
+
+    items = InventoryItem.objects.filter(
+        quantity_in_stock__gt=0,
+        item_name__icontains=query
+    )[:8]
+
+    results = []
+
+    for item in items:
+        results.append({
+            'id': item.id,
+            'item_name': item.item_name,
+            'category': item.category,
+            'price': str(item.unit_price),
+            'stock': item.quantity_in_stock,
+        })
+
+    return JsonResponse({'results': results})
+
+
 def add_to_cart(request, item_id):
     item = get_object_or_404(InventoryItem, id=item_id)
-
     cart = request.session.get('cart', {})
-
     item_id = str(item_id)
 
+    qty = int(request.GET.get('qty', 1))
+
     if item_id in cart:
-        if cart[item_id]['quantity'] < item.quantity_in_stock:
-            cart[item_id]['quantity'] += 1
+        new_qty = cart[item_id]['quantity'] + qty
+
+        if new_qty <= item.quantity_in_stock:
+            cart[item_id]['quantity'] = new_qty
+        else:
+            cart[item_id]['quantity'] = item.quantity_in_stock
+        
     else:
         cart[item_id] = {
             'name': item.item_name,
             'price': float(item.unit_price),
-            'quantity': 1
+            'quantity': qty
         }
 
     request.session['cart'] = cart
@@ -176,7 +204,7 @@ def checkout(request):
             'success': 'Transaction completed successfully.',
             'change': change,
             'cash': cash,
-            'total': total,
+            'total': 0,
             'items': InventoryItem.objects.filter(quantity_in_stock__gt=0),
             'cart': {},
             'low_stock_alerts': low_stock_alerts,
