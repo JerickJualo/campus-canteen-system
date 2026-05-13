@@ -2,18 +2,6 @@
 {% block content %}
 {% include 'inventory/_inventory_styles.html' %}
 
-{% if success %}
-<div id="toast-message" class="toast success-toast">
-    {{ success }}
-</div>
-{% endif %}
-
-{% if error %}
-<div id="toast-message" class="toast error-toast">
-    {{ error }}
-</div>
-{% endif %}
-
 <div class="inventory-page">
     <div class="inventory-header">
         <div>
@@ -28,7 +16,7 @@
         </div>
     </div>
 
-    <div class="filter-panel">
+    <div class="filter-panel" id="search-section">
         <div class="search-area">
             <div class="filter-field">
                 <label for="search-bar">Search Item</label>
@@ -108,7 +96,15 @@
             {% for key, item in cart.items %}
             <tr>
                 <td>{{ item.name }}</td>
-                <td>{{ item.quantity }}</td>
+                <td>
+                    <div style="display:flex; gap:6px; align-items:center; justify-content:center;">
+                        <a href="{% url 'decrease_quantity' key %}" class="btn btn-danger">−</a>
+
+                        <span style="font-weight:700;">{{ item.quantity }}</span>
+
+                        <a href="{% url 'increase_quantity' key %}" class="btn btn-success">+</a>
+                    </div>
+                </td>
                 <td>PHP {{ item.price|floatformat:2 }}</td>
                 <td>
                     <a href="{% url 'remove_from_cart' key %}?search={{ request.GET.search }}" class="btn btn-danger">
@@ -126,6 +122,40 @@
         </tbody>
     </table>
 
+    <div id="transaction-message-area" style="text-align: center; margin-top: 12px;">
+
+        {% if success %}
+        <div id="transaction-message" style="
+            margin-top: 8px;
+            display: inline-block;
+            padding: 10px 14px;
+            background: #e8f5e9;
+            border: 2px solid #1b5e20;
+            border-radius: 8px;
+            font-weight: 800;
+            color: #1b5e20;
+        ">
+            {{ success }}
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div id="transaction-message" style="
+            margin-top: 8px;
+            display: inline-block;
+            padding: 10px 14px;
+            background: #ffebee;
+            border: 2px solid #b71c1c;
+            border-radius: 8px;
+            font-weight: 800;
+            color: #b71c1c;
+        ">
+            {{ error }}
+        </div>
+        {% endif %}
+
+    </div>
+
     <div style="padding: 20px;">
         <h3>Total: PHP {{ total }}</h3>
         <form method="POST" action="{% url 'checkout' %}" style="margin-top: 20px;">
@@ -133,7 +163,14 @@
 
             <div class="filter-field" style="max-width: 300px;">
                 <label>Customer Payment</label>
-                <input type="number" step="0.01" name="cash" required placeholder="Enter payment amount">
+                <input
+                    type="number"
+                    step="0.01"
+                    name="cash"
+                    required
+                    placeholder="Enter payment amount"
+                    style="-moz-appearance: textfield;"
+                >
             </div>
 
             <div style="margin-top: 15px;">
@@ -282,6 +319,8 @@ searchBar.addEventListener('input', function () {
     if (query.length === 0) {
         searchResults.hidden = true;
         searchResults.innerHTML = '';
+
+        window.location.href = "/cashier/";
         return;
     }
 
@@ -296,8 +335,10 @@ searchBar.addEventListener('input', function () {
                     div.className = 'search-result-item';
 
                     div.innerHTML = `
-                        <strong>${item.item_name}</strong><br>
-                        <small>${item.category} | PHP ${item.price}</small>
+                        <div>
+                            <strong>${item.item_name}</strong><br>
+                            <small>${item.category} | PHP ${item.price}</small>
+                        </div>
                     `;
 
                     div.onclick = () => {
@@ -343,63 +384,23 @@ document.addEventListener('click', function(e) {
 
 <script>
     setTimeout(function () {
-        const toast = document.getElementById('toast-message');
-        if (toast) {
-            toast.remove();
+        const message = document.getElementById('transaction-message');
+        if (message) {
+            message.style.transition = "opacity 0.5s ease";
+            message.style.opacity = "0";
+
+            setTimeout(() => {
+                message.remove();
+            }, 500);
         }
     }, 4000);
 </script>
 
 <style>
-.toast {
-    position: fixed !important;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 99999;
-
-    min-width: 320px;
-    max-width: 500px;
-
-    padding: 16px 24px;
-    border-radius: 10px;
-    font-weight: 600;
-    text-align: center;
-
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
-
-    animation: slideDown 0.35s ease, fadeOut 0.4s ease 3.6s forwards;
-    pointer-events: none;
-}
-
-.success-toast {
-    background: #e8f5e9;
-    color: #1b5e20;
-    border: 1px solid #2e7d32;
-}
-
-.error-toast {
-    background: #ffebee;
-    color: #b71c1c;
-    border: 1px solid #d32f2f;
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -20px);
-    }
-    to {
-        opacity: 1;
-        transform: translate(-50%, 0);
-    }
-}
-
-@keyframes fadeOut {
-    to {
-        opacity: 0;
-        visibility: hidden;
-    }
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 </style>
 

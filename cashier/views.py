@@ -61,19 +61,24 @@ def cashier_search(request):
 
 def add_to_cart(request, item_id):
     item = get_object_or_404(InventoryItem, id=item_id)
-
     cart = request.session.get('cart', {})
-
     item_id = str(item_id)
 
+    qty = int(request.GET.get('qty', 1))
+
     if item_id in cart:
-        if cart[item_id]['quantity'] < item.quantity_in_stock:
-            cart[item_id]['quantity'] += 1
+        new_qty = cart[item_id]['quantity'] + qty
+
+        if new_qty <= item.quantity_in_stock:
+            cart[item_id]['quantity'] = new_qty
+        else:
+            cart[item_id]['quantity'] = item.quantity_in_stock
+        
     else:
         cart[item_id] = {
             'name': item.item_name,
             'price': float(item.unit_price),
-            'quantity': 1
+            'quantity': qty
         }
 
     request.session['cart'] = cart
