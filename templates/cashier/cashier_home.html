@@ -218,7 +218,70 @@
 <div class="inventory-actions" style="margin-top: 1.5rem; padding-left: 0.25rem;">
     <a href="{% url 'daily_report' %}" class="btn btn-primary">Daily Report</a>
     <a href="{% url 'monthly_report' %}" class="btn btn-muted">Monthly Report</a>
+    <button type="button" class="btn btn-primary" onclick="toggleReceiptHistory()" style="margin-left: 8px;">
+        Receipt History
+    </button>
 </div>
+
+<!-- Receipt History Section (inline, toggled) -->
+<div id="receiptHistorySection" class="panel" style="margin-top: 15px; display: none;">
+    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 class="panel-title">Receipt History</h3>
+        <button type="button" class="btn btn-muted" onclick="toggleReceiptHistory()" style="font-size: 0.85rem;">
+            Close
+        </button>
+    </div>
+    <table class="inventory-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Receipt No.</th>
+                <th>Date</th>
+                <th>Total</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in recent_receipts %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td style="font-weight: 600;">{{ r.receipt_number }}</td>
+                <td>{{ r.created_at|date:"M d, Y h:i A" }}</td>
+                <td class="strong-value">PHP {{ r.sale.total_amount|floatformat:2 }}</td>
+                <td>
+                    <button type="button" class="btn btn-primary" style="font-size: 0.8rem;"
+                        onclick="showReceiptModal('{{ r.sale.id }}')">
+                        View
+                    </button>
+                    <form method="post" action="{% url 'delete_receipt' r.id %}" style="display:inline; margin-left:4px;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm" style="font-size: 0.8rem;"
+                            onclick="return confirm('Delete receipt {{ r.receipt_number }}?');">
+                            Delete
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="empty-state">No receipts yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+function toggleReceiptHistory() {
+    const section = document.getElementById('receiptHistorySection');
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+        section.style.display = 'none';
+    }
+}
+</script>
 
 <!-- Receipt Modal -->
 <div id="receiptModal"

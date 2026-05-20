@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Receipt History – Campus Canteen</title>
+    <meta name="description" content="View all past receipts with pagination, totals and quick access to individual receipt details.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f0f4ff, #e6e9ff);
+            margin: 0;
+            padding: 2rem;
+            color: #2d2d2d;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.2rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(90deg, #4a90e2, #7f5fc6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .table-wrapper {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.85);
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 0.9rem 1.2rem;
+            text-align: left;
+        }
+        thead {
+            background: linear-gradient(90deg, #4a90e2, #7f5fc6);
+            color: #fff;
+        }
+        tbody tr {
+            transition: background-color 0.2s ease;
+        }
+        tbody tr:hover {
+            background-color: rgba(74,144,226,0.07);
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin: 1rem 0;
+            gap: 0.5rem;
+        }
+        .pagination a {
+            padding: 0.4rem 0.8rem;
+            border: 1px solid #4a90e2;
+            border-radius: 4px;
+            color: #4a90e2;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .pagination a.active {
+            background: #4a90e2;
+            color: #fff;
+        }
+        .pagination a:hover {
+            background: rgba(74,144,226,0.15);
+        }
+        .receipt-link {
+            color: #7f5fc6;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .receipt-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>Receipt History</h1>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Receipt Number</th>
+                    <th>Sale Date</th>
+                    <th>Total Amount</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for receipt in page_obj.object_list %}
+                <tr>
+                    <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
+                    <td>{{ receipt.receipt_number }}</td>
+                    <td>{{ receipt.created_at|date:"Y-m-d H:i" }}</td>
+                    <td>${{ receipt.sale.total_amount|floatformat:2 }}</td>
+                    <td><a class="receipt-link" href="{% url 'generate_receipt' receipt.sale.id %}">View</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" style="text-align:center;">No receipts found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}">← Prev</a>
+            {% endif %}
+            <span class="active">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">Next →</a>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
