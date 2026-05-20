@@ -30,10 +30,14 @@ def cashier_home(request):
         for item in cart.values()
     )
 
+    # Fetch recent receipts for the receipt history section
+    recent_receipts = Receipt.objects.select_related('sale').order_by('-created_at')[:20]
+
     return render(request, 'cashier/cashier_home.html', {
         'items': items,
         'cart': cart,
         'total': total,
+        'recent_receipts': recent_receipts,
     })
 
 
@@ -213,6 +217,39 @@ def checkout(request):
         })
 
     return redirect('cashier')
+
+# ---------------------------------------------------------------------------
+# Receipt History
+# ---------------------------------------------------------------------------
+from django.core.paginator import Paginator
+
+def receipt_history(request):
+    """Display a paginated list of all receipts.
+    Shows receipt number, sale date, total amount, and a link to view the
+    individual receipt.
+    """
+    receipt_qs = Receipt.objects.select_related('sale').order_by('-created_at')
+    # Pagination – 20 receipts per page
+    paginator = Paginator(receipt_qs, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'cashier/receipt_history.html', {
+        'page_obj': page_obj,
+    })
+
+
+def delete_receipt(request, receipt_id):
+    """Delete a receipt and its associated sale (cascade deletes sale items)."""
+    if request.method == 'POST':
+        receipt = get_object_or_404(Receipt, id=receipt_id)
+        receipt_number = receipt.receipt_number
+        # Deleting the sale cascades to SaleItem; deleting receipt is explicit
+        sale = receipt.sale
+        receipt.delete()
+        sale.delete()
+        messages.success(request, f'Receipt #{receipt_number} has been deleted.')
+    return redirect('cashier')
+
 
 def complete_transaction(request):
     if request.method == "POST":
