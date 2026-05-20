@@ -1,5 +1,5 @@
 from collections import _OrderedDictItemsView, OrderedDict
-from datetime import timedelta
+from datetime import timedelta, datetime, date
 import os
 
 from config import settings
@@ -241,21 +241,24 @@ def complete_transaction(request):
     
 
 
-def daily_report(request):
+def daily_report(request, year=None, month=None, day=None):
     from django.db.models import Q, F
     from collections import defaultdict
-    
-    today = now()
+
+    if year and month and day:
+        report_date = date(year, month, day)
+    else:
+        report_date = now().date()
 
     sales = Sale.objects.filter(
-        created_at__date=today.date()
+        created_at__date=report_date
     ).order_by('-created_at')
 
     total = sales.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     
-    # Get all sale items for today
+    # Get all sale items for the report date
     sale_items = SaleItem.objects.filter(
-        sale__created_at__date=today.date()
+        sale__created_at__date=report_date
     )
     
     # Total items sold (sum of quantities)
@@ -289,7 +292,7 @@ def daily_report(request):
     return render(request, 'report/daily.html', {
         'sales': sales,
         'total': total,
-        'report_date': today.date(),
+        'report_date': report_date,
         'transaction_count': sales.count(),
         'total_items_sold': total_items_sold,
         'best_sellers': best_sellers,
@@ -298,23 +301,29 @@ def daily_report(request):
         'fast_moving_items': fast_moving_items,
     })
     
-def monthly_report(request):
+def monthly_report(request, year=None, month=None):
     from django.db.models import Sum as DjangoSum, Count
     from collections import defaultdict
-    
-    today = now()
+
+    if year and month:
+        report_year = int(year)
+        report_month = int(month)
+    else:
+        now_dt = now()
+        report_year = now_dt.year
+        report_month = now_dt.month
 
     sales = Sale.objects.filter(
-        created_at__year=today.year,
-        created_at__month=today.month
+        created_at__year=report_year,
+        created_at__month=report_month
     ).order_by('-created_at')
 
     total = sales.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     
     # Get all sale items for the month
     sale_items = SaleItem.objects.filter(
-        sale__created_at__year=today.year,
-        sale__created_at__month=today.month
+        sale__created_at__year=report_year,
+        sale__created_at__month=report_month
     )
     
     # Total items sold for the month
@@ -341,8 +350,8 @@ def monthly_report(request):
     
     # Total restocks made during the month
     restocks = RestockHistory.objects.filter(
-        created_at__year=today.year,
-        created_at__month=today.month
+        created_at__year=report_year,
+        created_at__month=report_month
     )
     total_restocks_count = restocks.count()
     total_quantity_restocked = restocks.aggregate(Sum('quantity_added'))['quantity_added__sum'] or 0
@@ -353,12 +362,14 @@ def monthly_report(request):
         total_qty_added=DjangoSum('quantity_added')
     ).order_by('-restock_count')[:5]
 
+    month_name = datetime(report_year, report_month, 1).strftime('%B')
+    
     return render(request, 'report/monthly.html', {
         'sales': sales,
         'total': total,
-        'month': today.month,
-        'year': today.year,
-        'month_name': today.strftime('%B'),
+        'month': report_month,
+        'year': report_year,
+        'month_name': month_name,
         'transaction_count': sales.count(),
         'total_items_sold': total_items_sold,
         'best_sellers': best_sellers,
@@ -409,6 +420,66 @@ def delete_monthly_report(request):
         messages.success(request, f'Successfully deleted {count} sales records for {today.strftime("%B %Y")}.')
         return redirect('monthly_report')
     return redirect('monthly_report')
+
+
+def daily_report_history(request):
+    from django.db.models.functions import TruncDate
+    from django.db.models import Count
+
+    daily_history_qs = Sale.objects.annotate(
+        report_date=TruncDate('created_at')
+    ).values('report_date').annotate(
+        transaction_count=Count('id'),
+        total_revenue=Sum('total_amount')
+    ).order_by('-report_date')[:30]
+
+    daily_history = list(daily_history_qs)
+
+    return render(request, 'report/daily_report_history.html', {
+        'daily_history': daily_history,
+    })
+
+
+def monthly_report_history(request):
+    from django.db.models.functions import TruncMonth
+    from django.db.models import Count
+
+    monthly_history_qs = Sale.objects.annotate(
+        report_month=TruncMonth('created_at')
+    ).values('report_month').annotate(
+        transaction_count=Count('id'),
+        total_revenue=Sum('total_amount')
+    ).order_by('-report_month')[:12]
+
+    monthly_history = list(monthly_history_qs)
+
+    return render(request, 'report/monthly_report_history.html', {
+        'monthly_history': monthly_history,
+    })
+
+
+def report_history(request):
+    from django.db.models.functions import TruncDate, TruncMonth
+    from django.db.models import Count
+
+    daily_history = Sale.objects.annotate(
+        report_date=TruncDate('created_at')
+    ).values('report_date').annotate(
+        transaction_count=Count('id'),
+        total_revenue=Sum('total_amount')
+    ).order_by('-report_date')[:30]
+
+    monthly_history = Sale.objects.annotate(
+        report_month=TruncMonth('created_at')
+    ).values('report_month').annotate(
+        transaction_count=Count('id'),
+        total_revenue=Sum('total_amount')
+    ).order_by('-report_month')[:12]
+
+    return render(request, 'report/report_history.html', {
+        'daily_history': daily_history,
+        'monthly_history': monthly_history,
+    })
 
 
 def generate_receipt(request, sale_id):

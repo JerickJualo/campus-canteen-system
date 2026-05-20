@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
-
+{% load tz %}
 {% block content %}
+{% include 'inventory/_inventory_styles.html' %}
+
     <div class="page-header">
         <div>
             <h2 class="page-title">Monthly Sales Report</h2>
@@ -8,12 +10,19 @@
         </div>
         <div class="report-actions">
             <a class="btn-report btn-secondary" href="{% url 'cashier' %}">← Back to Cashier</a>
-            <form method="post" action="{% url 'delete_monthly_report' %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete all sales data for this month? This action cannot be undone.')">
-                {% csrf_token %}
-                <button type="submit" class="btn-report btn-danger">Delete Monthly Report</button>
-            </form>
+            <a class="btn-report btn-primary" href="{% url 'monthly_report_history' %}">Monthly History</a>
+            <button type="button" class="btn-report btn-success" onclick="window.print()">Print Report</button>
         </div>
     </div>
+
+<div class="print-header print-only">
+    <div class="print-report-title">Campus Canteen System</div>
+    <div class="print-report-meta">
+        <div><strong>Report:</strong> Monthly Sales Report</div>
+        <div><strong>Month:</strong> {{ month_name }} {{ year }}</div>
+        <div><strong>Printed:</strong> {% now "F j, Y g:i A" %}</div>
+    </div>
+</div>
 
     <!-- Key Metrics -->
     <div class="report-summary-grid">
@@ -38,7 +47,7 @@
     <!-- Top-Selling Items -->
     {% if best_sellers %}
     <div class="report-section">
-        <h3>🏆 Top-Selling Items</h3>
+        <h3>Top-Selling Items</h3>
         <div class="table-card">
             <table class="report-table">
                 <thead>
@@ -65,7 +74,7 @@
     <!-- Lowest-Selling Items -->
     {% if lowest_sellers %}
     <div class="report-section">
-        <h3>📉 Lowest-Selling Items</h3>
+        <h3>Lowest-Selling Items</h3>
         <div class="table-card">
             <table class="report-table">
                 <thead>
@@ -92,7 +101,7 @@
     <!-- Daily Sales Summary -->
     {% if daily_sales %}
     <div class="report-section">
-        <h3>📅 Daily Sales Summary</h3>
+        <h3>Daily Sales Summary</h3>
         <div class="table-card">
             <table class="report-table">
                 <thead>
@@ -122,7 +131,7 @@
 
     <!-- Restocking Summary -->
     <div class="report-section">
-        <h3>📦 Restocking Summary</h3>
+        <h3>Restocking Summary</h3>
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
             <div class="report-card">
                 <span class="report-label">Total Restocks</span>
@@ -179,7 +188,7 @@
                         <tr>
                             <td>#{{ sale.id }}</td>
                             <td>PHP {{ sale.total_amount|floatformat:2 }}</td>
-                            <td>{{ sale.created_at|date:"M d, Y H:i" }}</td>
+                            <td>{{ sale.created_at|localtime|date:"M d, Y g:i A" }}</td>
                         </tr>
                     {% empty %}
                         <tr>
@@ -190,4 +199,86 @@
             </table>
         </div>
     </div>
+
+<div class="print-footer print-only">
+    <div class="left">Campus Canteen System</div>
+    <div class="right">Printed: {% now "F j, Y g:i A" %}</div>
+</div>
+
+    <script>
+        window.addEventListener('load', function () {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('print') === '1') {
+                setTimeout(function () {
+                    window.print();
+                }, 100);
+            }
+        });
+    </script>
+
+    <style>
+        .print-header { display: none; padding: 1.25rem 0; margin-bottom: 1.5rem; border-bottom: 2px solid #111; }
+        .print-report-title { font-size: 1.55rem; font-weight: 700; margin-bottom: 0.35rem; color: #111; font-family: Georgia, serif; }
+        .print-report-meta { display: flex; flex-wrap: wrap; gap: 1rem; color: #111; font-size: 0.95rem; font-family: Georgia, serif; }
+        .print-report-meta div { min-width: 160px; }
+        .report-document { background: #fff; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: 24px; padding: 2rem; box-shadow: 0 25px 50px rgba(15, 23, 42, 0.08); margin-bottom: 2rem; }
+        .report-intro { margin-bottom: 1.75rem; color: #475569; font-size: 1rem; line-height: 1.75; font-family: Georgia, serif; }
+        .report-note { max-width: 860px; margin: 0; }
+        .print-footer { display: none; }
+        .print-footer .left, .print-footer .right { font-family: Georgia, serif; font-size: 0.95rem; }
+
+        @media print {
+            @page { size: A4 portrait; margin: 20mm; }
+            html, body { background: #fff !important; color: #000 !important; min-height: auto !important; font-family: Georgia, serif !important; }
+            body { margin: 0; }
+            main > h1, nav, .page-header, .report-actions, .btn-report, .inventory-actions, .search-area, .filter-panel, .receipt-modal, .btn { display: none !important; }
+            .print-header, .print-footer { display: block !important; }
+            .print-header { border-bottom: 1px solid #111; margin-bottom: 1.5rem; padding-bottom: 0.75rem; }
+            .report-document,
+            .report-summary-grid,
+            .report-card,
+            .report-label,
+            .report-value,
+            .table-card,
+            .report-section { display: block !important; visibility: visible !important; opacity: 1 !important; }
+            .report-document { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+            .report-card, .table-card { box-shadow: none !important; background: #fff !important; border: 1px solid #ccc !important; }
+            .report-card { padding: 0.65rem 0.85rem !important; border-radius: 8px !important; }
+            .report-summary-grid {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                gap: 0.4rem !important;
+                margin: 0 auto 1.25rem auto !important;
+                max-width: 320px !important;
+            }
+            .report-card .report-label {
+                display: block !important;
+                font-size: 0.88rem !important;
+                margin-bottom: 0.25rem !important;
+                color: #333 !important;
+            }
+            .report-card .report-value {
+                display: block !important;
+                font-size: 0.98rem !important;
+                font-weight: 700 !important;
+            }
+            .report-label, .report-value { color: #000 !important; }
+            .report-value {
+                font-weight: 800 !important;
+                background: none !important;
+                -webkit-background-clip: initial !important;
+                background-clip: initial !important;
+                -webkit-text-fill-color: #000 !important;
+            }
+            .report-table { width: 100%; border-collapse: collapse !important; font-size: 10.5pt !important; margin-bottom: 1rem; }
+            .report-table th, .report-table td { border: 1px solid #999 !important; padding: 0.75rem 0.9rem !important; color: #000 !important; }
+            .report-table th { background: #f2f2f2 !important; font-weight: 700; }
+            .report-section { page-break-inside: avoid; margin-bottom: 1.5rem; }
+            .report-section h3 { font-family: Georgia, serif; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid #ccc; padding-bottom: 0.35rem; color: #111; }
+            .report-intro { color: #111 !important; }
+            .print-footer { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #ccc; padding: 0.75rem 1rem; display: flex !important; justify-content: space-between; align-items: center; font-size: 0.9rem; }
+            .report-card + .report-card { margin-top: 0.75rem; }
+            .table-card + .report-section { margin-top: 1rem; }
+        }
+    </style>
 {% endblock %}

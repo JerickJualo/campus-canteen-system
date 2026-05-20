@@ -597,10 +597,10 @@
             </div>
         {% endif %}
 
-        <div class="page-shell">
+        {% block page_shell_start %}<div class="page-shell">{% endblock %}
             {% block content %}
             {% endblock %}
-        </div>
+        {% block page_shell_end %}</div>{% endblock %}
     </main>
 </body>
 </html>
