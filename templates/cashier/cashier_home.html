@@ -1,8 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
 {% include 'inventory/_inventory_styles.html' %}
-
-<div class="inventory-page">
     <div class="inventory-header">
         <div>
             <h2 class="inventory-title">Cashier</h2>
@@ -13,7 +11,7 @@
 
         <div class="inventory-actions">
             <a href="{% url 'inventory_dashboard' %}" class="btn btn-muted">Inventory</a>
-        </div>
+            </div>
     </div>
 
     <div class="filter-panel" id="search-section">
@@ -169,7 +167,7 @@
                     name="cash"
                     required
                     placeholder="Enter payment amount"
-                    style="-moz-appearance: textfield;"
+                    style="appearance: textfield; -moz-appearance: textfield;"
                 >
             </div>
 
@@ -210,17 +208,13 @@
             <div class="inv-message success" style="margin-top: 15px;">
                 <div style="margin-bottom: 8px;">Receipt #{{ receipt_number }} generated</div>
                 <button type="button" class="btn btn-primary" style="margin-top: 8px;"
-                    onclick="showReceiptModal({{ receipt_id }})">
+                    onclick="showReceiptModal('{{ receipt_id }}')">
                     View Receipt
                 </button>
             </div>
             {% endif %}
         </div>
     </div>
-</div>
-</div>
-</div>
-
 <div class="inventory-actions" style="margin-top: 1.5rem; padding-left: 0.25rem;">
     <a href="{% url 'daily_report' %}" class="btn btn-primary">Daily Report</a>
     <a href="{% url 'monthly_report' %}" class="btn btn-muted">Monthly Report</a>
@@ -288,7 +282,18 @@
             '<style>' +
             'body { font-family: "Courier New", monospace; margin: 20px; }' +
             '.receipt-container { max-width: 400px; margin: 0 auto; }' +
-            '@media print { body { margin: 0; }' +
+            '@media print {' +
+            '  body { margin: 0; padding: 10px; }' +
+            '  .receipt-container { text-align: center; }' +
+            '  .receipt-container h2, .receipt-container h3, .receipt-container .receipt-header { text-align: center !important; }' +
+            '  .receipt-container .receipt-footer, .receipt-container .footer { text-align: center !important; }' +
+            '  .receipt-container .receipt-total, .receipt-container .total-amount, .receipt-container .grand-total { text-align: center !important; font-weight: bold !important; }' +
+            '  .receipt-container table { width: 100%; margin: 0 auto; }' +
+            '  .receipt-container table th, .receipt-container table td { text-align: left !important; padding: 4px 2px; }' +
+            '  .receipt-container table th { text-align: center !important; }' +
+            '  .receipt-container .item-row { text-align: left !important; }' +
+            '  .receipt-container .amount-row, .receipt-container .subtotal, .receipt-container .change { text-align: right !important; }' +
+            '}' +
             '</style>' +
             '</head>' +
             '<body>' +
