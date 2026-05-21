@@ -29,6 +29,46 @@
         </div>
     </div>
 
+    <div class="filter-panel screen-only">
+        <form method="get" class="receipt-filter-form">
+            <div class="filter-field">
+                <label for="search">Search</label>
+                <input id="search" type="text" name="search" value="{{ search_query }}" placeholder="Receipt no. or cashier">
+            </div>
+            <div class="filter-field">
+                <label for="cashier">Cashier</label>
+                <input id="cashier" type="text" name="cashier" value="{{ cashier_filter }}" placeholder="Cashier name">
+            </div>
+            <div class="filter-field">
+                <label for="payment_method">Payment</label>
+                <select id="payment_method" name="payment_method">
+                    <option value="">All Methods</option>
+                    {% for method in payment_methods %}
+                        <option value="{{ method }}" {% if payment_filter == method %}selected{% endif %}>{{ method }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="date_from">From</label>
+                <input id="date_from" type="date" name="date_from" value="{{ date_from }}">
+            </div>
+            <div class="filter-field">
+                <label for="date_to">To</label>
+                <input id="date_to" type="date" name="date_to" value="{{ date_to }}">
+            </div>
+            <div class="filter-field">
+                <label for="min_total">Min Total</label>
+                <input id="min_total" type="number" step="0.01" name="min_total" value="{{ min_total }}" placeholder="0.00">
+            </div>
+            <div class="filter-field">
+                <label for="max_total">Max Total</label>
+                <input id="max_total" type="number" step="0.01" name="max_total" value="{{ max_total }}" placeholder="0.00">
+            </div>
+            <button type="submit" class="btn btn-primary">Apply</button>
+            <a href="{% url 'receipt_history' %}" class="btn btn-muted">Reset</a>
+        </form>
+    </div>
+
     <div class="inventory-table-wrap">
         <table class="inventory-table receipt-history-table">
             <thead>
@@ -36,6 +76,10 @@
                     <th>#</th>
                     <th>Receipt Number</th>
                     <th>Sale Date</th>
+                    <th>Cashier</th>
+                    <th>Payment</th>
+                    <th>Cash Received</th>
+                    <th>Change</th>
                     <th>Total Amount</th>
                     <th class="screen-only">Details</th>
                 </tr>
@@ -46,6 +90,10 @@
                         <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
                         <td><strong>{{ receipt.receipt_number }}</strong></td>
                         <td>{{ receipt.created_at|date:"M d, Y h:i A" }}</td>
+                        <td>{{ receipt.cashier_name }}</td>
+                        <td>{{ receipt.payment_method }}</td>
+                        <td>PHP {{ receipt.cash_received|floatformat:2 }}</td>
+                        <td>PHP {{ receipt.change_amount|floatformat:2 }}</td>
                         <td class="strong-value">PHP {{ receipt.sale.total_amount|floatformat:2 }}</td>
                         <td class="screen-only">
                             <a class="btn btn-primary btn-compact" href="{% url 'generate_receipt' receipt.sale.id %}">View</a>
@@ -53,7 +101,7 @@
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="5" class="empty-state">No receipts found.</td>
+                        <td colspan="9" class="empty-state">No receipts found.</td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -62,11 +110,11 @@
 
     <div class="receipt-pagination screen-only">
         {% if page_obj.has_previous %}
-            <a class="btn btn-muted" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            <a class="btn btn-muted" href="?{% if query_params %}{{ query_params }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
         {% endif %}
         <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
-            <a class="btn btn-muted" href="?page={{ page_obj.next_page_number }}">Next</a>
+            <a class="btn btn-muted" href="?{% if query_params %}{{ query_params }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
         {% endif %}
     </div>
 </div>
@@ -91,9 +139,25 @@
         margin-top: 1rem;
     }
 
+    .receipt-filter-form {
+        align-items: end;
+        display: grid;
+        gap: 0.85rem;
+        grid-template-columns: repeat(7, minmax(120px, 1fr)) auto auto;
+    }
+
     @media (max-width: 900px) {
         .receipt-summary {
             grid-template-columns: 1fr;
+        }
+
+        .receipt-filter-form {
+            display: block;
+        }
+
+        .receipt-filter-form .filter-field,
+        .receipt-filter-form .btn {
+            margin-top: 0.75rem;
         }
     }
 

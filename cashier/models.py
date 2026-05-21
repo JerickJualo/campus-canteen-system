@@ -51,6 +51,8 @@ class Receipt(models.Model):
     receipt_number = models.CharField(max_length=20, unique=True)
     cashier_name = models.CharField(max_length=100, default='Cashier')
     payment_method = models.CharField(max_length=50, default='Cash')
+    cash_received = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    change_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):

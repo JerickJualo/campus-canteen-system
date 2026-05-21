@@ -12,7 +12,8 @@ from cashier.models import Sale, SaleItem, Receipt
 from inventory.models import InventoryItem
 from django.utils import timezone
 from django.utils.timezone import now
-from django.db.models import Sum, F
+from django.db import transaction
+from django.db.models import Q, Sum, F
 from django import forms
 import django.db.models as models
 from django.http import JsonResponse
@@ -152,6 +153,15 @@ def checkout(request):
         total += Decimal(str(item['price'])) * item['quantity']
 
     if request.method == 'POST':
+        cashier_name = request.POST.get('cashier_name', '').strip()
+        payment_method = request.POST.get('payment_method', 'Cash').strip() or 'Cash'
+
+        if not cashier_name:
+            if request.user.is_authenticated:
+                cashier_name = request.user.get_full_name() or request.user.get_username()
+            else:
+                cashier_name = 'Cashier'
+
         try:
             cash = Decimal(request.POST.get('cash', '0'))
         except (InvalidOperation, TypeError):
@@ -163,9 +173,11 @@ def checkout(request):
                 'items': available_items,
                 'cart': cart,
                 'recent_receipts': recent_receipts,
+                'cashier_name': cashier_name,
+                'payment_method': payment_method,
             })
 
-        if cash < total:
+        if cash < total and payment_method.lower() == 'cash':
             return render(request, 'cashier/cashier_home.html', {
                 'error': 'Insufficient payment.',
                 'cash': cash,
@@ -174,57 +186,71 @@ def checkout(request):
                 'items': available_items,
                 'cart': cart,
                 'recent_receipts': recent_receipts,
+                'cashier_name': cashier_name,
+                'payment_method': payment_method,
             })
 
         change = cash - total
-
-        for item_id, item in cart.items():
-            inventory_item = InventoryItem.objects.get(id=item_id)
-
-            if item['quantity'] > inventory_item.quantity_in_stock:
-                return render(request, 'cashier/cashier_home.html', {
-                    'error': f'Not enough stock for {inventory_item.item_name}.',
-                    'items': InventoryItem.objects.filter(quantity_in_stock__gt=0),
-                    'cart': cart,
-                    'total': total,
-                    'recent_receipts': recent_receipts,
-                })
+        if change < 0:
+            change = Decimal('0.00')
 
         # deduct stock and save the completed sale for reporting
         low_stock_alerts = []
 
-        sale = Sale.objects.create(
-            total_amount=total,
-            created_at=timezone.now()
-        )
+        with transaction.atomic():
+            inventory_items = {
+                str(item.id): item
+                for item in InventoryItem.objects.select_for_update().filter(id__in=cart.keys())
+            }
 
-        for item_id, item in cart.items():
-            inventory_item = InventoryItem.objects.get(id=item_id)
-            inventory_item.quantity_in_stock -= item['quantity']
-            inventory_item.save()
+            for item_id, item in cart.items():
+                inventory_item = inventory_items.get(str(item_id))
 
-            if inventory_item.quantity_in_stock <= inventory_item.minimum_stock_level:
-                low_stock_alerts.append(
-                    f"{inventory_item.item_name} is low on stock ({inventory_item.quantity_in_stock} left)"
+                if not inventory_item or item['quantity'] > inventory_item.quantity_in_stock:
+                    item_name = item.get('name', 'this item')
+                    return render(request, 'cashier/cashier_home.html', {
+                        'error': f'Not enough stock for {item_name}.',
+                        'items': InventoryItem.objects.filter(quantity_in_stock__gt=0),
+                        'cart': cart,
+                        'total': total,
+                        'recent_receipts': recent_receipts,
+                        'cashier_name': cashier_name,
+                        'payment_method': payment_method,
+                    })
+
+            sale = Sale.objects.create(
+                total_amount=total,
+                created_at=timezone.now()
+            )
+
+            for item_id, item in cart.items():
+                inventory_item = inventory_items[str(item_id)]
+                inventory_item.quantity_in_stock -= item['quantity']
+                inventory_item.save(update_fields=['quantity_in_stock', 'status'])
+
+                if inventory_item.quantity_in_stock <= inventory_item.minimum_stock_level:
+                    low_stock_alerts.append(
+                        f"{inventory_item.item_name} is low on stock ({inventory_item.quantity_in_stock} left)"
+                    )
+
+                SaleItem.objects.create(
+                    sale=sale,
+                    item_name=item['name'],
+                    quantity=item['quantity'],
+                    price=Decimal(str(item['price']))
                 )
 
-            SaleItem.objects.create(
+            receipt = Receipt.objects.create(
                 sale=sale,
-                item_name=item['name'],
-                quantity=item['quantity'],
-                price=Decimal(str(item['price']))
+                receipt_number=Receipt.generate_receipt_number(),
+                cashier_name=cashier_name,
+                payment_method=payment_method,
+                cash_received=cash,
+                change_amount=change,
             )
 
         # clear cart after successful transaction
         request.session['cart'] = {}
-
-        # Create receipt for this transaction
-        receipt = Receipt.objects.create(
-            sale=sale,
-            receipt_number=Receipt.generate_receipt_number(),
-            cashier_name='Cashier',
-            payment_method='Cash'
-        )
 
         return render(request, 'cashier/cashier_home.html', {
             'success': 'Transaction completed successfully.',
@@ -253,12 +279,61 @@ def receipt_history(request):
     individual receipt.
     """
     receipt_qs = Receipt.objects.select_related('sale').order_by('-created_at')
+    search_query = request.GET.get('search', '').strip()
+    cashier_filter = request.GET.get('cashier', '').strip()
+    payment_filter = request.GET.get('payment_method', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+    min_total = request.GET.get('min_total', '').strip()
+    max_total = request.GET.get('max_total', '').strip()
+
+    if search_query:
+        receipt_qs = receipt_qs.filter(
+            Q(receipt_number__icontains=search_query) |
+            Q(cashier_name__icontains=search_query)
+        )
+
+    if cashier_filter:
+        receipt_qs = receipt_qs.filter(cashier_name__icontains=cashier_filter)
+
+    if payment_filter:
+        receipt_qs = receipt_qs.filter(payment_method=payment_filter)
+
+    if date_from:
+        receipt_qs = receipt_qs.filter(created_at__date__gte=date_from)
+
+    if date_to:
+        receipt_qs = receipt_qs.filter(created_at__date__lte=date_to)
+
+    try:
+        if min_total:
+            receipt_qs = receipt_qs.filter(sale__total_amount__gte=Decimal(min_total))
+        if max_total:
+            receipt_qs = receipt_qs.filter(sale__total_amount__lte=Decimal(max_total))
+    except InvalidOperation:
+        messages.error(request, 'Please enter valid amount filters.')
+
+    payment_methods = Receipt.objects.exclude(payment_method='').values_list(
+        'payment_method',
+        flat=True,
+    ).distinct().order_by('payment_method')
     # Pagination – 20 receipts per page
     paginator = Paginator(receipt_qs, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
     return render(request, 'cashier/receipt_history.html', {
         'page_obj': page_obj,
+        'payment_methods': payment_methods,
+        'query_params': query_params.urlencode(),
+        'search_query': search_query,
+        'cashier_filter': cashier_filter,
+        'payment_filter': payment_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'min_total': min_total,
+        'max_total': max_total,
     })
 
 
@@ -555,7 +630,9 @@ def generate_receipt(request, sale_id):
             sale=sale,
             receipt_number=Receipt.generate_receipt_number(),
             cashier_name='Cashier',
-            payment_method='Cash'
+            payment_method='Cash',
+            cash_received=sale.total_amount,
+            change_amount=0,
         )
     
     # Get sale items with calculated subtotals

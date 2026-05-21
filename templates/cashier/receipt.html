@@ -166,6 +166,8 @@
             <p><strong>Date:</strong> {{ receipt.created_at|date:"Y-m-d H:i" }}</p>
             <p><strong>Cashier:</strong> {{ receipt.cashier_name }}</p>
             <p><strong>Payment:</strong> {{ receipt.payment_method }}</p>
+            <p><strong>Cash Received:</strong> PHP {{ receipt.cash_received|floatformat:2 }}</p>
+            <p><strong>Change:</strong> PHP {{ receipt.change_amount|floatformat:2 }}</p>
         </div>
 
         <table class="items-table">
@@ -182,8 +184,8 @@
                 <tr>
                     <td>{{ item.item_name }}</td>
                     <td class="qty">{{ item.quantity }}</td>
-                    <td class="price">₱{{ item.price|floatformat:2 }}</td>
-                    <td class="subtotal">₱{{ item.subtotal|floatformat:2 }}</td>
+                    <td class="price">PHP {{ item.price|floatformat:2 }}</td>
+                    <td class="subtotal">PHP {{ item.subtotal|floatformat:2 }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -191,8 +193,8 @@
 
         <div class="totals">
             <p><strong>Items:</strong> {{ total_items }}</p>
-            <p><strong>Subtotal:</strong> ₱{{ sale.total_amount|floatformat:2 }}</p>
-            <p class="total"><strong>TOTAL:</strong> ₱{{ sale.total_amount|floatformat:2 }}</p>
+            <p><strong>Subtotal:</strong> PHP {{ sale.total_amount|floatformat:2 }}</p>
+            <p class="total"><strong>TOTAL:</strong> PHP {{ sale.total_amount|floatformat:2 }}</p>
         </div>
 
         <div class="footer">
@@ -219,3 +221,4 @@
 </body>
 
 </html>
+

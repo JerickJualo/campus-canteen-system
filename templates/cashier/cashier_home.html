@@ -160,6 +160,26 @@
             {% csrf_token %}
 
             <div class="filter-field" style="max-width: 300px;">
+                <label>Cashier Name</label>
+                <input
+                    type="text"
+                    name="cashier_name"
+                    value="{{ cashier_name|default:'Cashier' }}"
+                    placeholder="Enter cashier name"
+                >
+            </div>
+
+            <div class="filter-field" style="max-width: 300px; margin-top: 12px;">
+                <label>Payment Method</label>
+                <select name="payment_method">
+                    <option value="Cash" {% if payment_method == 'Cash' or not payment_method %}selected{% endif %}>Cash</option>
+                    <option value="GCash" {% if payment_method == 'GCash' %}selected{% endif %}>GCash</option>
+                    <option value="Card" {% if payment_method == 'Card' %}selected{% endif %}>Card</option>
+                    <option value="Other" {% if payment_method == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+
+            <div class="filter-field" style="max-width: 300px; margin-top: 12px;">
                 <label>Customer Payment</label>
                 <input
                     type="number"
@@ -238,6 +258,8 @@
                 <th>#</th>
                 <th>Receipt No.</th>
                 <th>Date</th>
+                <th>Cashier</th>
+                <th>Payment</th>
                 <th>Total</th>
                 <th>Action</th>
             </tr>
@@ -248,6 +270,8 @@
                 <td>{{ forloop.counter }}</td>
                 <td style="font-weight: 600;">{{ r.receipt_number }}</td>
                 <td>{{ r.created_at|date:"M d, Y h:i A" }}</td>
+                <td>{{ r.cashier_name }}</td>
+                <td>{{ r.payment_method }}</td>
                 <td class="strong-value">PHP {{ r.sale.total_amount|floatformat:2 }}</td>
                 <td>
                     <button type="button" class="btn btn-primary" style="font-size: 0.8rem;"
@@ -265,7 +289,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" class="empty-state">No receipts yet.</td>
+                <td colspan="7" class="empty-state">No receipts yet.</td>
             </tr>
             {% endfor %}
         </tbody>
