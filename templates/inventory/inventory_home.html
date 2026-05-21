@@ -1,6 +1,19 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>Inventory Module</h2>
-<p>Inventory features will go here.</p>
+{% include 'inventory/_inventory_styles.html' %}
+
+<div class="inventory-page">
+    <div class="inventory-header">
+        <div>
+            <h2 class="inventory-title">Inventory Home</h2>
+            <p class="inventory-subtitle">Jump into the dashboard, item list, or restocking tools.</p>
+        </div>
+        <div class="inventory-actions">
+            <a href="{% url 'inventory_dashboard' %}" class="btn btn-primary">Dashboard</a>
+            <a href="{% url 'inventory_list' %}" class="btn btn-muted">Inventory List</a>
+            <a href="{% url 'multi_item_restock' %}" class="btn btn-muted">Multi-item Restock</a>
+        </div>
+    </div>
+</div>
 {% endblock %}

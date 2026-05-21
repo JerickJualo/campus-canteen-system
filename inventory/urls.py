@@ -7,6 +7,7 @@ from .views import (
     inventory_dashboard,
     inventory_history,
     inventory_list,
+    inventory_print_checklist,
     inventory_search,
     multi_item_restock,
     restock_inventory_item,
@@ -15,6 +16,7 @@ from .views import (
 urlpatterns = [
     path('', inventory_dashboard, name='inventory_dashboard'),
     path('list/', inventory_list, name='inventory_list'),
+    path('list/print-checklist/', inventory_print_checklist, name='inventory_print_checklist'),
     path('history/', inventory_history, name='inventory_history'),
     path('add/', add_inventory_item, name='add_inventory_item'),
     path('edit/<int:pk>/', edit_inventory_item, name='edit_inventory_item'),

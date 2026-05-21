@@ -5,8 +5,9 @@ from django.http import JsonResponse
 from django.db import models, transaction
 from django.db.models import Q
 from django import forms
+from django.utils import timezone
 
-from .models import CATEGORY_CHOICES, InventoryItem, RestockHistory
+from .models import CATEGORY_CHOICES, Category, InventoryItem, RestockHistory
 
 
 def get_restock_user(request):
@@ -24,6 +25,23 @@ def record_restock(item, quantity_added, previous_quantity, request, note=''):
         restocked_by=get_restock_user(request),
         note=note,
     )
+
+
+def get_category_names():
+    ensure_default_categories()
+    return list(Category.objects.values_list('name', flat=True))
+
+
+def ensure_default_categories():
+    existing_item_categories = InventoryItem.objects.exclude(category='').values_list('category', flat=True).distinct()
+    category_names = [category for category, label in CATEGORY_CHOICES]
+    category_names.extend(existing_item_categories)
+
+    for category_name in category_names:
+        clean_name = category_name.strip()
+        if clean_name:
+            Category.objects.get_or_create(name=clean_name)
+
 
 # --- Inventory Dashboard View ---
 def inventory_dashboard(request):
@@ -126,10 +144,10 @@ def inventory_history(request):
 
     return render(request, 'inventory/inventory_history.html', {
         'history': history,
-        'categories': [category for category, label in CATEGORY_CHOICES],
+        'categories': get_category_names(),
     })
 
-def inventory_list(request):
+def get_filtered_inventory_items(request):
     items = InventoryItem.objects.all()
     search_query = request.GET.get('search', '').strip()
     category_filter = request.GET.get('category', '').strip()
@@ -154,7 +172,15 @@ def inventory_list(request):
     else:
         items = items.order_by('item_name')
 
-    categories = [category for category, label in CATEGORY_CHOICES]
+    return items, {
+        'search_query': search_query,
+        'category_filter': category_filter,
+        'stock_filter': stock_filter,
+        'sort_by': sort_by,
+    }
+
+
+def get_inventory_summary():
     total_items = InventoryItem.objects.count()
     low_stock_count = InventoryItem.objects.filter(
         quantity_in_stock__lte=models.F('minimum_stock_level'),
@@ -162,12 +188,35 @@ def inventory_list(request):
     ).count()
     out_of_stock_count = InventoryItem.objects.filter(quantity_in_stock=0).count()
 
-    return render(request, 'inventory/inventory_list.html', {
-        'items': items,
-        'categories': categories,
+    return {
         'total_items': total_items,
         'low_stock_count': low_stock_count,
         'out_of_stock_count': out_of_stock_count,
+    }
+
+
+def inventory_list(request):
+    items, filter_context = get_filtered_inventory_items(request)
+    categories = get_category_names()
+    summary = get_inventory_summary()
+
+    return render(request, 'inventory/inventory_list.html', {
+        'items': items,
+        'categories': categories,
+        **summary,
+        **filter_context,
+    })
+
+
+def inventory_print_checklist(request):
+    items, filter_context = get_filtered_inventory_items(request)
+    summary = get_inventory_summary()
+
+    return render(request, 'inventory/inventory_print_checklist.html', {
+        'items': items,
+        'printed_at': timezone.localtime(),
+        **summary,
+        **filter_context,
     })
 
 
@@ -221,9 +270,31 @@ def restock_inventory_item(request, pk):
 
 # Inventory Add Item Form
 class InventoryItemForm(forms.ModelForm):
+    new_category = forms.CharField(
+        required=False,
+        max_length=50,
+        label='New category',
+        help_text='Use this only if the category is not in the list.',
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Example: Desserts',
+        }),
+    )
+
     class Meta:
         model = InventoryItem
         fields = ['item_name', 'category', 'unit_price', 'quantity_in_stock', 'minimum_stock_level']
+        widgets = {
+            'category': forms.Select(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        categories = get_category_names()
+        self.fields['category'].choices = [('', 'Select category')] + [
+            (category, category) for category in categories
+        ]
+        self.fields['category'].widget.choices = self.fields['category'].choices
+        self.fields['category'].required = False
 
     def clean_item_name(self):
         item_name = self.cleaned_data['item_name'].strip()
@@ -238,6 +309,25 @@ class InventoryItemForm(forms.ModelForm):
             raise forms.ValidationError('An inventory item with this name already exists.')
 
         return item_name
+
+    def clean_new_category(self):
+        new_category = (self.cleaned_data.get('new_category') or '').strip()
+        if len(new_category) > 50:
+            raise forms.ValidationError('Category name must be 50 characters or fewer.')
+        return new_category
+
+    def clean(self):
+        cleaned_data = super().clean()
+        category = (cleaned_data.get('category') or '').strip()
+        new_category = (cleaned_data.get('new_category') or '').strip()
+
+        if not category and not new_category:
+            raise forms.ValidationError('Please choose an existing category or enter a new one.')
+
+        if new_category:
+            cleaned_data['category'] = new_category
+
+        return cleaned_data
 
     def clean_unit_price(self):
         unit_price = self.cleaned_data['unit_price']
@@ -256,6 +346,17 @@ class InventoryItemForm(forms.ModelForm):
         if quantity_in_stock < 0:
             raise forms.ValidationError('Quantity in stock cannot be negative.')
         return quantity_in_stock
+
+    def save(self, commit=True):
+        item = super().save(commit=False)
+        category = self.cleaned_data['category'].strip()
+        item.category = category
+        Category.objects.get_or_create(name=category)
+
+        if commit:
+            item.save()
+
+        return item
 
 # Add Inventory Item View
 def add_inventory_item(request):

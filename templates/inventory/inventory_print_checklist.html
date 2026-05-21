@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Stock Check</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            color: #111;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            margin: 0;
+            padding: 18px;
+        }
+
+        .sheet {
+            max-width: 1120px;
+            margin: 0 auto;
+        }
+
+        .screen-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-bottom: 14px;
+        }
+
+        .btn {
+            background: #fff;
+            border: 1px solid #174a21;
+            border-radius: 4px;
+            color: #174a21;
+            cursor: pointer;
+            font-weight: 700;
+            padding: 8px 12px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: #174a21;
+            color: #fff;
+        }
+
+        .print-header {
+            border-bottom: 2px solid #111;
+            display: grid;
+            gap: 12px;
+            grid-template-columns: 1fr auto;
+            padding-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 24px;
+            letter-spacing: 0;
+            margin: 0 0 6px;
+        }
+
+        .subtitle,
+        .meta,
+        .filter-list {
+            color: #333;
+            font-weight: 700;
+        }
+
+        .meta {
+            text-align: right;
+        }
+
+        .summary-grid {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: repeat(4, 1fr);
+            margin: 14px 0;
+        }
+
+        .summary-box {
+            border: 1px solid #222;
+            min-height: 62px;
+            padding: 8px;
+        }
+
+        .summary-label {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .summary-value {
+            font-size: 22px;
+            font-weight: 900;
+            margin-top: 6px;
+        }
+
+        .filter-list {
+            border: 1px solid #222;
+            display: grid;
+            gap: 6px;
+            grid-template-columns: repeat(4, 1fr);
+            margin-bottom: 14px;
+            padding: 8px;
+        }
+
+        .signoff {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(3, 1fr);
+            margin-bottom: 14px;
+        }
+
+        .signoff-box {
+            border: 1px solid #222;
+            min-height: 46px;
+            padding: 8px;
+        }
+
+        .signoff-line {
+            border-bottom: 1px solid #111;
+            height: 20px;
+            margin-top: 8px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #222;
+            padding: 7px 6px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #eee;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .number {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .blank-cell {
+            height: 30px;
+            min-width: 80px;
+        }
+
+        .notes-cell {
+            min-width: 150px;
+        }
+
+        .status {
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .status-low {
+            color: #7a4300;
+        }
+
+        .status-out {
+            color: #7f1d1d;
+        }
+
+        .empty-state {
+            font-weight: 800;
+            padding: 24px;
+            text-align: center;
+        }
+
+        @media print {
+            @page {
+                margin: 12mm;
+                size: landscape;
+            }
+
+            body {
+                padding: 0;
+            }
+
+            .screen-actions {
+                display: none;
+            }
+
+            .sheet {
+                max-width: none;
+            }
+
+            tr {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sheet">
+        <div class="screen-actions">
+            <a class="btn" href="{% url 'inventory_list' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">Back to Inventory</a>
+            <button class="btn btn-primary" type="button" onclick="window.print()">Print</button>
+        </div>
+
+        <header class="print-header">
+            <div>
+                <h1>Campus Canteen Inventory Stock Check</h1>
+                <div class="subtitle">Physical count worksheet for inventory auditing and restock review.</div>
+            </div>
+            <div class="meta">
+                <div>Printed: {{ printed_at|date:"M d, Y h:i A" }}</div>
+                <div>Items on sheet: {{ items|length }}</div>
+            </div>
+        </header>
+
+        <section class="summary-grid" aria-label="Inventory summary">
+            <div class="summary-box">
+                <div class="summary-label">Total Items</div>
+                <div class="summary-value">{{ total_items }}</div>
+            </div>
+            <div class="summary-box">
+                <div class="summary-label">Low Stock</div>
+                <div class="summary-value">{{ low_stock_count }}</div>
+            </div>
+            <div class="summary-box">
+                <div class="summary-label">Out of Stock</div>
+                <div class="summary-value">{{ out_of_stock_count }}</div>
+            </div>
+            <div class="summary-box">
+                <div class="summary-label">Counted Items</div>
+                <div class="summary-value">&nbsp;</div>
+            </div>
+        </section>
+
+        <section class="filter-list" aria-label="Applied filters">
+            <div>Search: {{ search_query|default:"All items" }}</div>
+            <div>Category: {{ category_filter|default:"All categories" }}</div>
+            <div>Status: {{ stock_filter|default:"All statuses" }}</div>
+            <div>Sort: {{ sort_by }}</div>
+        </section>
+
+        <section class="signoff" aria-label="Stock check sign off">
+            <div class="signoff-box">
+                Checked by
+                <div class="signoff-line"></div>
+            </div>
+            <div class="signoff-box">
+                Verified by
+                <div class="signoff-line"></div>
+            </div>
+            <div class="signoff-box">
+                Date completed
+                <div class="signoff-line"></div>
+            </div>
+        </section>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 4%;">#</th>
+                    <th style="width: 20%;">Item</th>
+                    <th style="width: 11%;">Category</th>
+                    <th style="width: 9%;">Unit Price</th>
+                    <th style="width: 9%;">System Stock</th>
+                    <th style="width: 8%;">Min Stock</th>
+                    <th style="width: 10%;">Status</th>
+                    <th style="width: 10%;">Physical Count</th>
+                    <th style="width: 9%;">Difference</th>
+                    <th style="width: 10%;">Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                    <tr>
+                        <td class="number">{{ forloop.counter }}</td>
+                        <td><strong>{{ item.item_name }}</strong></td>
+                        <td>{{ item.category }}</td>
+                        <td class="number">PHP {{ item.unit_price }}</td>
+                        <td class="number">{{ item.quantity_in_stock }}</td>
+                        <td class="number">{{ item.minimum_stock_level }}</td>
+                        <td>
+                            {% if item.quantity_in_stock == 0 %}
+                                <span class="status status-out">Out of Stock</span>
+                            {% elif item.quantity_in_stock <= item.minimum_stock_level %}
+                                <span class="status status-low">Low Stock</span>
+                            {% else %}
+                                <span class="status">Available</span>
+                            {% endif %}
+                        </td>
+                        <td class="blank-cell">&nbsp;</td>
+                        <td class="blank-cell">&nbsp;</td>
+                        <td class="blank-cell notes-cell">&nbsp;</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="10" class="empty-state">No inventory items match the current filters.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

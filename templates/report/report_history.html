@@ -3,77 +3,85 @@
 {% include 'inventory/_inventory_styles.html' %}
 
 <div class="inventory-page">
-  <div class="inventory-header">
-    <div>
-      <h2 class="inventory-title">Report History</h2>
-      <p class="inventory-subtitle">Access daily and monthly report history.</p>
+    <div class="inventory-header">
+        <div>
+            <h2 class="inventory-title">Report History</h2>
+            <p class="inventory-subtitle">Open archived daily and monthly sales summaries.</p>
+        </div>
+        <div class="inventory-actions">
+            <a href="{% url 'cashier' %}" class="btn btn-muted">Back to Cashier</a>
+            <a href="{% url 'daily_report' %}" class="btn btn-muted">Current Day</a>
+            <a href="{% url 'monthly_report' %}" class="btn btn-muted">Current Month</a>
+        </div>
     </div>
-    <div class="inventory-actions">
-      <a href="{% url 'cashier' %}" class="btn btn-muted">Back to Cashier</a>
-      <a href="{% url 'daily_report' %}" class="btn btn-muted">Current Day</a>
-      <a href="{% url 'monthly_report' %}" class="btn btn-muted">Current Month</a>
-    </div>
-  </div>
 
-  <style>
-    @media print {
-      .inventory-actions { display: none !important; }
-      .btn { display: none !important; }
-    }
-    
-    .history-links {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-top: 30px;
-    }
-    
-    .history-card {
-      padding: 30px;
-      border: 2px solid #e0e0e0;
-      border-radius: 8px;
-      text-align: center;
-      background: #f9f9f9;
-      transition: all 0.3s ease;
-    }
-    
-    .history-card:hover {
-      border-color: #1b5e20;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    
-    .history-card h3 {
-      margin: 0 0 10px 0;
-      color: #333;
-    }
-    
-    .history-card p {
-      margin: 0 0 20px 0;
-      color: #666;
-      font-size: 14px;
-    }
-    
-    @media (max-width: 768px) {
-      .history-links {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+    <div class="history-card-grid">
+        <a class="history-card" href="{% url 'daily_report_history' %}">
+            <span class="history-label">Daily</span>
+            <strong>Daily Report History</strong>
+            <span>View recent daily sales totals, transaction counts, and printable day reports.</span>
+        </a>
 
-  <div class="history-links">
-    <div class="history-card">
-      <h3>Daily Report History</h3>
-      <p>View sales summary from the past 30 days</p>
-      <a href="{% url 'daily_report_history' %}" class="btn btn-primary">View Daily History</a>
+        <a class="history-card" href="{% url 'monthly_report_history' %}">
+            <span class="history-label">Monthly</span>
+            <strong>Monthly Report History</strong>
+            <span>Review monthly sales performance and print month-end summaries.</span>
+        </a>
     </div>
-    
-    <div class="history-card">
-      <h3>Monthly Report History</h3>
-      <p>View sales summary from the past 12 months</p>
-      <a href="{% url 'monthly_report_history' %}" class="btn btn-primary">View Monthly History</a>
-    </div>
-  </div>
 </div>
 
-{% endblock %}
+<style>
+    .history-card-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 
+    .history-card {
+        background: #fff;
+        border: 2px solid #9cae9f;
+        border-left: 7px solid #16803a;
+        border-radius: 8px;
+        box-shadow: 0 3px 10px rgba(24, 35, 15, 0.08);
+        color: #18230f;
+        display: block;
+        min-height: 165px;
+        padding: 1rem;
+        text-decoration: none;
+        transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .history-card:hover {
+        border-color: #16803a;
+        transform: translateY(-2px);
+    }
+
+    .history-label {
+        color: #bd6f00;
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 900;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+    }
+
+    .history-card strong {
+        color: #174a21;
+        display: block;
+        font-size: 1.35rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .history-card span:last-child {
+        color: #334155;
+        font-weight: 700;
+        line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+        .history-card-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}

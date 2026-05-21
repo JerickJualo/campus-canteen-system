@@ -1,23 +1,57 @@
-<h2>Monthly Sales ({{ month }}/{{ year }})</h2>
+{% extends 'base.html' %}
+{% block content %}
+{% include 'inventory/_inventory_styles.html' %}
 
-<table border="1">
-<tr>
-    <th>ID</th>
-    <th>Total</th>
-    <th>Date</th>
-</tr>
+<div class="inventory-page">
+    <div class="inventory-header">
+        <div>
+            <h2 class="inventory-title">Monthly Sales</h2>
+            <p class="inventory-subtitle">{{ month }}/{{ year }}</p>
+        </div>
+        <div class="inventory-actions">
+            <a href="{% url 'cashier' %}" class="btn btn-muted">Back to Cashier</a>
+            <a href="{% url 'monthly_report' %}" class="btn btn-muted">Current Monthly Report</a>
+        </div>
+    </div>
 
-{% for sale in sales %}
-<tr>
-    <td>{{ sale.id }}</td>
-    <td>PHP {{ sale.total_amount }}</td>
-    <td>{{ sale.created_at }}</td>
-</tr>
-{% empty %}
-<tr>
-    <td colspan="3">No sales this month</td>
-</tr>
-{% endfor %}
-</table>
+    <div class="summary-row">
+        <div class="summary-card">
+            <div class="summary-label">Total Revenue</div>
+            <div class="summary-value">PHP {{ total|floatformat:2 }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Month</div>
+            <div class="summary-value">{{ month }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Year</div>
+            <div class="summary-value">{{ year }}</div>
+        </div>
+    </div>
 
-<h3>Total: PHP {{ total }}</h3>
+    <div class="inventory-table-wrap">
+        <table class="inventory-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Total</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in sales %}
+                    <tr>
+                        <td>#{{ sale.id }}</td>
+                        <td class="strong-value">PHP {{ sale.total_amount|floatformat:2 }}</td>
+                        <td>{{ sale.created_at }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="3" class="empty-state">No sales this month.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

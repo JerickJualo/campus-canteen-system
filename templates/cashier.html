@@ -1,6 +1,18 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>Cashier Module</h2>
-<p>Cashier features will go here.</p>
+{% include 'inventory/_inventory_styles.html' %}
+
+<div class="inventory-page">
+    <div class="inventory-header">
+        <div>
+            <h2 class="inventory-title">Cashier Module</h2>
+            <p class="inventory-subtitle">Process purchases, manage the active cart, and review receipts.</p>
+        </div>
+        <div class="inventory-actions">
+            <a href="{% url 'cashier' %}" class="btn btn-primary">Open Cashier</a>
+            <a href="{% url 'receipt_history' %}" class="btn btn-muted">Receipt History</a>
+        </div>
+    </div>
+</div>
 {% endblock %}

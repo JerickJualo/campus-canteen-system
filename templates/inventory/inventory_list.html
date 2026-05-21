@@ -12,6 +12,7 @@
             <a href="{% url 'inventory_dashboard' %}" class="btn btn-muted">Dashboard</a>
             <a href="{% url 'inventory_history' %}" class="btn btn-muted">History</a>
             <a href="{% url 'multi_item_restock' %}" class="btn btn-primary">Multi-item Restock</a>
+            <a href="{% url 'inventory_print_checklist' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-muted">Print Stock Check</a>
             <a href="{% url 'add_inventory_item' %}" class="btn btn-success">Add Item</a>
         </div>
     </div>

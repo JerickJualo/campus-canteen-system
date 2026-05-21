@@ -1,25 +1,56 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Daily Report</title>
-</head>
-<body>
-    <h1>Daily Report</h1>
+{% extends 'base.html' %}
+{% block content %}
+{% include 'inventory/_inventory_styles.html' %}
 
-    <p>Date: {{ report_date }}</p>
-    <p>Total Sales: ₱{{ total_sales }}</p>
-    <p>Number of Orders: {{ total_orders }}</p>
+<div class="inventory-page">
+    <div class="inventory-header">
+        <div>
+            <h2 class="inventory-title">Daily Report</h2>
+            <p class="inventory-subtitle">{{ report_date }}</p>
+        </div>
+        <div class="inventory-actions">
+            <a href="{% url 'cashier' %}" class="btn btn-muted">Back to Cashier</a>
+        </div>
+    </div>
 
-    <h2>Orders</h2>
-    <ul>
-        {% for order in orders %}
-            <li>Order #{{ order.id }} - ₱{{ order.total_amount }} - {{ order.created_at }}</li>
-        {% empty %}
-            <li>No orders found today.</li>
-        {% endfor %}
-    </ul>
-</body>
-</html>
+    <div class="summary-row">
+        <div class="summary-card">
+            <div class="summary-label">Total Sales</div>
+            <div class="summary-value">PHP {{ total_sales|floatformat:2 }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Number of Orders</div>
+            <div class="summary-value">{{ total_orders }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Report Date</div>
+            <div class="summary-value">{{ report_date }}</div>
+        </div>
+    </div>
 
-<a href="/cashier/" class="back-btn">
-    ⬅ Back to Cashier
+    <div class="inventory-table-wrap">
+        <table class="inventory-table">
+            <thead>
+                <tr>
+                    <th>Order</th>
+                    <th>Total Amount</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                    <tr>
+                        <td>#{{ order.id }}</td>
+                        <td>PHP {{ order.total_amount|floatformat:2 }}</td>
+                        <td>{{ order.created_at }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="3" class="empty-state">No orders found today.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

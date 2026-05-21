@@ -3,105 +3,138 @@
 {% block content %}
 {% include 'inventory/_inventory_styles.html' %}
 
-    <div class="page-header">
+<div class="sales-report-page">
+    <div class="sales-report-header">
         <div>
-            <h2 class="page-title">Monthly Sales Report</h2>
-            <p class="page-subtitle">{{ month_name }} {{ year }}</p>
+            <p class="eyebrow">Sales Report</p>
+            <h2 class="sales-report-title">Monthly Sales Report</h2>
+            <p class="sales-report-subtitle">{{ month_name }} {{ year }}</p>
         </div>
-        <div class="report-actions">
-            <a class="btn-report btn-secondary" href="{% url 'cashier' %}">← Back to Cashier</a>
-            <a class="btn-report btn-primary" href="{% url 'monthly_report_history' %}">Monthly History</a>
-            <button type="button" class="btn-report btn-success" onclick="window.print()">Print Report</button>
-        </div>
-    </div>
-
-<div class="print-header print-only">
-    <div class="print-report-title">Campus Canteen System</div>
-    <div class="print-report-meta">
-        <div><strong>Report:</strong> Monthly Sales Report</div>
-        <div><strong>Month:</strong> {{ month_name }} {{ year }}</div>
-        <div><strong>Printed:</strong> {% now "F j, Y g:i A" %}</div>
-    </div>
-</div>
-
-    <!-- Key Metrics -->
-    <div class="report-summary-grid">
-        <div class="report-card">
-            <span class="report-label">Transactions</span>
-            <span class="report-value">{{ transaction_count }}</span>
-        </div>
-        <div class="report-card">
-            <span class="report-label">Total Revenue</span>
-            <span class="report-value">PHP {{ total|floatformat:2 }}</span>
-        </div>
-        <div class="report-card">
-            <span class="report-label">Items Sold</span>
-            <span class="report-value">{{ total_items_sold }}</span>
-        </div>
-        <div class="report-card">
-            <span class="report-label">Restocks</span>
-            <span class="report-value">{{ total_restocks_count }}</span>
+        <div class="sales-report-actions">
+            <a class="btn btn-muted" href="{% url 'cashier' %}">Back to Cashier</a>
+            <a class="btn btn-muted" href="{% url 'monthly_report_history' %}">Monthly History</a>
+            <button type="button" class="btn btn-primary" onclick="window.print()">Print Report</button>
         </div>
     </div>
 
-    <!-- Top-Selling Items -->
-    {% if best_sellers %}
-    <div class="report-section">
-        <h3>Top-Selling Items</h3>
-        <div class="table-card">
-            <table class="report-table">
-                <thead>
-                    <tr>
-                        <th>Item Name</th>
-                        <th>Quantity Sold</th>
-                        <th>Revenue</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in best_sellers %}
+    <header class="print-header">
+        <div>
+            <h1>Campus Canteen Monthly Sales Report</h1>
+            <div class="print-subtitle">Sales and restocking audit sheet for {{ month_name }} {{ year }}.</div>
+        </div>
+        <div class="print-meta">
+            <div>Printed: {% now "M d, Y h:i A" %}</div>
+            <div>Report month: {{ month_name }} {{ year }}</div>
+        </div>
+    </header>
+
+    <section class="report-summary-grid polished-summary" aria-label="Monthly sales summary">
+        <div class="summary-card">
+            <div class="summary-label">Transactions</div>
+            <div class="summary-value">{{ transaction_count }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Total Revenue</div>
+            <div class="summary-value">PHP {{ total|floatformat:2 }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Items Sold</div>
+            <div class="summary-value">{{ total_items_sold }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Qty Restocked</div>
+            <div class="summary-value">{{ total_quantity_restocked }}</div>
+        </div>
+    </section>
+
+    <section class="print-context">
+        <div>Report: Monthly Sales</div>
+        <div>Month: {{ month_name }} {{ year }}</div>
+        <div>Transactions: {{ transaction_count }}</div>
+        <div>Revenue: PHP {{ total|floatformat:2 }}</div>
+    </section>
+
+    <section class="print-signoff">
+        <div class="signoff-box">
+            Prepared by
+            <div class="signoff-line"></div>
+        </div>
+        <div class="signoff-box">
+            Reviewed by
+            <div class="signoff-line"></div>
+        </div>
+        <div class="signoff-box">
+            Date completed
+            <div class="signoff-line"></div>
+        </div>
+    </section>
+
+    <div class="report-grid">
+        {% if best_sellers %}
+        <section class="report-panel">
+            <div class="section-heading">
+                <h3>Top-Selling Items</h3>
+                <span>Highest quantity sold this month</span>
+            </div>
+            <div class="table-card">
+                <table class="report-table">
+                    <thead>
                         <tr>
-                            <td>{{ item.item_name }}</td>
-                            <td>{{ item.total_qty }}</td>
-                            <td>PHP {{ item.total_revenue|floatformat:2 }}</td>
+                            <th>Item Name</th>
+                            <th>Quantity Sold</th>
+                            <th>Revenue</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    {% endif %}
+                    </thead>
+                    <tbody>
+                        {% for item in best_sellers %}
+                            <tr>
+                                <td>{{ item.item_name }}</td>
+                                <td>{{ item.total_qty }}</td>
+                                <td>PHP {{ item.total_revenue|floatformat:2 }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
 
-    <!-- Lowest-Selling Items -->
-    {% if lowest_sellers %}
-    <div class="report-section">
-        <h3>Lowest-Selling Items</h3>
-        <div class="table-card">
-            <table class="report-table">
-                <thead>
-                    <tr>
-                        <th>Item Name</th>
-                        <th>Quantity Sold</th>
-                        <th>Revenue</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in lowest_sellers %}
+        {% if lowest_sellers %}
+        <section class="report-panel">
+            <div class="section-heading">
+                <h3>Lowest-Selling Items</h3>
+                <span>Slow movers to review</span>
+            </div>
+            <div class="table-card">
+                <table class="report-table">
+                    <thead>
                         <tr>
-                            <td>{{ item.item_name }}</td>
-                            <td>{{ item.total_qty }}</td>
-                            <td>PHP {{ item.total_revenue|floatformat:2 }}</td>
+                            <th>Item Name</th>
+                            <th>Quantity Sold</th>
+                            <th>Revenue</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                        {% for item in lowest_sellers %}
+                            <tr>
+                                <td>{{ item.item_name }}</td>
+                                <td>{{ item.total_qty }}</td>
+                                <td>PHP {{ item.total_revenue|floatformat:2 }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
     </div>
-    {% endif %}
 
-    <!-- Daily Sales Summary -->
     {% if daily_sales %}
-    <div class="report-section">
-        <h3>Daily Sales Summary</h3>
+    <section class="report-panel">
+        <div class="section-heading">
+            <h3>Daily Sales Summary</h3>
+            <span>Daily item movement and revenue</span>
+        </div>
         <div class="table-card">
             <table class="report-table">
                 <thead>
@@ -120,60 +153,65 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="3">No daily sales data</td>
+                            <td colspan="3" class="empty-state">No daily sales data.</td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
     {% endif %}
 
-    <!-- Restocking Summary -->
-    <div class="report-section">
-        <h3>Restocking Summary</h3>
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
-            <div class="report-card">
-                <span class="report-label">Total Restocks</span>
-                <span class="report-value">{{ total_restocks_count }}</span>
+    <section class="report-panel">
+        <div class="section-heading">
+            <h3>Restocking Summary</h3>
+            <span>Inventory replenishment activity for the month</span>
+        </div>
+
+        <div class="restock-summary-grid">
+            <div class="summary-card">
+                <div class="summary-label">Total Restocks</div>
+                <div class="summary-value">{{ total_restocks_count }}</div>
             </div>
-            <div class="report-card">
-                <span class="report-label">Total Qty Restocked</span>
-                <span class="report-value">{{ total_quantity_restocked }}</span>
+            <div class="summary-card">
+                <div class="summary-label">Total Qty Restocked</div>
+                <div class="summary-value">{{ total_quantity_restocked }}</div>
             </div>
         </div>
 
-        <!-- Items Frequently Low on Stock -->
         {% if low_stock_items %}
-        <div style="margin-top: 1rem;">
-            <h4 style="color: #dc2626; font-size: 1rem; margin-bottom: 0.75rem;">⚠ Items Frequently Low/Out of Stock</h4>
-            <div class="table-card">
-                <table class="report-table">
-                    <thead>
-                        <tr>
-                            <th>Item Name</th>
-                            <th>Times Restocked</th>
-                            <th>Total Qty Added</th>
+        <div class="section-heading compact-heading">
+            <h3>Frequently Restocked Items</h3>
+            <span>Items that may need adjusted stock planning</span>
+        </div>
+        <div class="table-card">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Times Restocked</th>
+                        <th>Total Qty Added</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in low_stock_items %}
+                        <tr class="alert-row">
+                            <td>{{ item.inventory_item__item_name }}</td>
+                            <td>{{ item.restock_count }}</td>
+                            <td>{{ item.total_qty_added }}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in low_stock_items %}
-                            <tr class="alert-row">
-                                <td>{{ item.inventory_item__item_name }}</td>
-                                <td>{{ item.restock_count }}</td>
-                                <td>{{ item.total_qty_added }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
         {% endif %}
-    </div>
+    </section>
 
-    <!-- Transactions List -->
-    <div class="report-section">
-        <h3>Transaction Details</h3>
+    <section class="report-panel">
+        <div class="section-heading">
+            <h3>Transaction Details</h3>
+            <span>Individual sales recorded for the report month</span>
+        </div>
         <div class="table-card">
             <table class="report-table">
                 <thead>
@@ -192,93 +230,325 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="3">No transactions this month</td>
+                            <td colspan="3" class="empty-state">No transactions this month.</td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
-
-<div class="print-footer print-only">
-    <div class="left">Campus Canteen System</div>
-    <div class="right">Printed: {% now "F j, Y g:i A" %}</div>
+    </section>
 </div>
 
-    <script>
-        window.addEventListener('load', function () {
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('print') === '1') {
-                setTimeout(function () {
-                    window.print();
-                }, 100);
-            }
-        });
-    </script>
-
-    <style>
-        .print-header { display: none; padding: 1.25rem 0; margin-bottom: 1.5rem; border-bottom: 2px solid #111; }
-        .print-report-title { font-size: 1.55rem; font-weight: 700; margin-bottom: 0.35rem; color: #111; font-family: Georgia, serif; }
-        .print-report-meta { display: flex; flex-wrap: wrap; gap: 1rem; color: #111; font-size: 0.95rem; font-family: Georgia, serif; }
-        .print-report-meta div { min-width: 160px; }
-        .report-document { background: #fff; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: 24px; padding: 2rem; box-shadow: 0 25px 50px rgba(15, 23, 42, 0.08); margin-bottom: 2rem; }
-        .report-intro { margin-bottom: 1.75rem; color: #475569; font-size: 1rem; line-height: 1.75; font-family: Georgia, serif; }
-        .report-note { max-width: 860px; margin: 0; }
-        .print-footer { display: none; }
-        .print-footer .left, .print-footer .right { font-family: Georgia, serif; font-size: 0.95rem; }
-
-        @media print {
-            @page { size: A4 portrait; margin: 20mm; }
-            html, body { background: #fff !important; color: #000 !important; min-height: auto !important; font-family: Georgia, serif !important; }
-            body { margin: 0; }
-            main > h1, nav, .page-header, .report-actions, .btn-report, .inventory-actions, .search-area, .filter-panel, .receipt-modal, .btn { display: none !important; }
-            .print-header, .print-footer { display: block !important; }
-            .print-header { border-bottom: 1px solid #111; margin-bottom: 1.5rem; padding-bottom: 0.75rem; }
-            .report-document,
-            .report-summary-grid,
-            .report-card,
-            .report-label,
-            .report-value,
-            .table-card,
-            .report-section { display: block !important; visibility: visible !important; opacity: 1 !important; }
-            .report-document { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
-            .report-card, .table-card { box-shadow: none !important; background: #fff !important; border: 1px solid #ccc !important; }
-            .report-card { padding: 0.65rem 0.85rem !important; border-radius: 8px !important; }
-            .report-summary-grid {
-                display: grid !important;
-                grid-template-columns: 1fr !important;
-                gap: 0.4rem !important;
-                margin: 0 auto 1.25rem auto !important;
-                max-width: 320px !important;
-            }
-            .report-card .report-label {
-                display: block !important;
-                font-size: 0.88rem !important;
-                margin-bottom: 0.25rem !important;
-                color: #333 !important;
-            }
-            .report-card .report-value {
-                display: block !important;
-                font-size: 0.98rem !important;
-                font-weight: 700 !important;
-            }
-            .report-label, .report-value { color: #000 !important; }
-            .report-value {
-                font-weight: 800 !important;
-                background: none !important;
-                -webkit-background-clip: initial !important;
-                background-clip: initial !important;
-                -webkit-text-fill-color: #000 !important;
-            }
-            .report-table { width: 100%; border-collapse: collapse !important; font-size: 10.5pt !important; margin-bottom: 1rem; }
-            .report-table th, .report-table td { border: 1px solid #999 !important; padding: 0.75rem 0.9rem !important; color: #000 !important; }
-            .report-table th { background: #f2f2f2 !important; font-weight: 700; }
-            .report-section { page-break-inside: avoid; margin-bottom: 1.5rem; }
-            .report-section h3 { font-family: Georgia, serif; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid #ccc; padding-bottom: 0.35rem; color: #111; }
-            .report-intro { color: #111 !important; }
-            .print-footer { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #ccc; padding: 0.75rem 1rem; display: flex !important; justify-content: space-between; align-items: center; font-size: 0.9rem; }
-            .report-card + .report-card { margin-top: 0.75rem; }
-            .table-card + .report-section { margin-top: 1rem; }
+<script>
+    window.addEventListener('load', function () {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('print') === '1') {
+            setTimeout(function () {
+                window.print();
+            }, 100);
         }
-    </style>
+    });
+</script>
+
+<style>
+    .sales-report-page {
+        color: #18230f;
+        margin: 0 auto;
+        max-width: 1180px;
+    }
+
+    .sales-report-header {
+        align-items: flex-start;
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+    }
+
+    .eyebrow {
+        color: #bd6f00;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        margin: 0 0 0.35rem;
+        text-transform: uppercase;
+    }
+
+    .sales-report-title {
+        color: #174a21;
+        font-size: 2rem;
+        font-weight: 900;
+        letter-spacing: 0;
+        margin: 0;
+    }
+
+    .sales-report-subtitle {
+        color: #334155;
+        font-weight: 700;
+        margin: 0.35rem 0 0;
+    }
+
+    .sales-report-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        justify-content: flex-end;
+    }
+
+    .polished-summary {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .report-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .report-panel {
+        margin-bottom: 1rem;
+    }
+
+    .section-heading {
+        align-items: end;
+        display: flex;
+        gap: 0.75rem;
+        justify-content: space-between;
+        margin: 1.25rem 0 0.6rem;
+    }
+
+    .compact-heading {
+        margin-top: 1rem;
+    }
+
+    .section-heading h3 {
+        color: #174a21;
+        font-size: 1.2rem;
+        font-weight: 900;
+        margin: 0;
+    }
+
+    .section-heading span {
+        color: #475569;
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-align: right;
+    }
+
+    .restock-summary-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-bottom: 0.5rem;
+    }
+
+    .print-header,
+    .print-context,
+    .print-signoff {
+        display: none;
+    }
+
+    @media (max-width: 900px) {
+        .sales-report-header,
+        .section-heading {
+            display: block;
+        }
+
+        .sales-report-actions {
+            justify-content: flex-start;
+            margin-top: 1rem;
+        }
+
+        .polished-summary,
+        .report-grid,
+        .restock-summary-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media print {
+        @page {
+            margin: 12mm;
+            size: landscape;
+        }
+
+        * {
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+
+        html,
+        body {
+            background: #fff !important;
+            color: #111 !important;
+            font-family: Arial, Helvetica, sans-serif !important;
+            font-size: 12px !important;
+            min-height: auto !important;
+        }
+
+        main {
+            max-width: none !important;
+            padding: 0 !important;
+        }
+
+        main > h1,
+        nav,
+        .sales-report-header {
+            display: none !important;
+        }
+
+        .page-shell {
+            background: none !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+        }
+
+        .page-shell::before {
+            display: none !important;
+        }
+
+        .sales-report-page {
+            max-width: none !important;
+        }
+
+        .print-header {
+            border-bottom: 2px solid #111;
+            display: grid !important;
+            gap: 12px;
+            grid-template-columns: 1fr auto;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+        }
+
+        .print-header h1 {
+            color: #111 !important;
+            font-size: 24px;
+            letter-spacing: 0;
+            margin: 0 0 6px;
+        }
+
+        .print-subtitle,
+        .print-meta,
+        .print-context {
+            color: #333 !important;
+            font-weight: 700;
+        }
+
+        .print-meta {
+            text-align: right;
+        }
+
+        .print-context {
+            border: 1px solid #222;
+            display: grid !important;
+            gap: 6px;
+            grid-template-columns: repeat(4, 1fr);
+            margin-bottom: 14px;
+            padding: 8px;
+        }
+
+        .print-signoff {
+            display: grid !important;
+            gap: 12px;
+            grid-template-columns: repeat(3, 1fr);
+            margin-bottom: 14px;
+        }
+
+        .signoff-box {
+            border: 1px solid #222;
+            min-height: 46px;
+            padding: 8px;
+        }
+
+        .signoff-line {
+            border-bottom: 1px solid #111;
+            height: 20px;
+            margin-top: 8px;
+        }
+
+        .report-summary-grid,
+        .restock-summary-grid {
+            display: grid !important;
+            gap: 8px !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            margin: 14px 0 !important;
+        }
+
+        .restock-summary-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+
+        .summary-card {
+            border: 1px solid #222 !important;
+            border-radius: 0 !important;
+            min-height: 62px;
+            padding: 8px !important;
+        }
+
+        .summary-label {
+            color: #111 !important;
+            font-size: 10px !important;
+            font-weight: 800 !important;
+            text-transform: uppercase;
+        }
+
+        .summary-value {
+            color: #111 !important;
+            font-size: 22px !important;
+            font-weight: 900 !important;
+            margin-top: 6px;
+        }
+
+        .report-grid {
+            display: block !important;
+        }
+
+        .section-heading {
+            display: block !important;
+            margin: 12px 0 6px !important;
+        }
+
+        .section-heading h3 {
+            color: #111 !important;
+            font-size: 14px !important;
+            margin: 0 !important;
+        }
+
+        .section-heading span {
+            display: none !important;
+        }
+
+        .table-card {
+            border: 0 !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+        }
+
+        .report-table {
+            border-collapse: collapse !important;
+            font-size: 11px !important;
+            width: 100% !important;
+        }
+
+        .report-table th,
+        .report-table td {
+            border: 1px solid #222 !important;
+            color: #111 !important;
+            padding: 7px 6px !important;
+            vertical-align: top !important;
+        }
+
+        .report-table th {
+            background: #eee !important;
+            font-size: 10px !important;
+            text-transform: uppercase;
+        }
+
+        tr,
+        .report-panel {
+            break-inside: avoid;
+        }
+    }
+</style>
 {% endblock %}

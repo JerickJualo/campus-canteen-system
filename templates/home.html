@@ -1,11 +1,120 @@
 {% extends 'base.html' %}
-
 {% block content %}
-<h2>Welcome to the Canteen System</h2>
-<p>Select a module:</p>
+{% include 'inventory/_inventory_styles.html' %}
 
-<ul>
-    <li><a href="{% url 'inventory_dashboard' %}">Go to Inventory</a></li>
-    <li><a href="/cashier/">Go to Cashier</a></li>
-</ul>
+<div class="home-page">
+    <div class="home-header">
+        <p class="eyebrow">Campus Canteen</p>
+        <h2 class="home-title">Choose a Workspace</h2>
+        <p class="home-subtitle">Open the cashier counter, manage stock, or review sales activity.</p>
+    </div>
+
+    <div class="home-grid">
+        <a class="home-card" href="{% url 'cashier' %}">
+            <span class="home-card-label">Sales</span>
+            <strong>Cashier</strong>
+            <span>Process purchases, view recent receipts, and open sales reports.</span>
+        </a>
+
+        <a class="home-card" href="{% url 'inventory_dashboard' %}">
+            <span class="home-card-label">Stock</span>
+            <strong>Inventory</strong>
+            <span>Track items, restock products, and print stock checking sheets.</span>
+        </a>
+
+        <a class="home-card" href="{% url 'report_history' %}">
+            <span class="home-card-label">Reports</span>
+            <strong>Report History</strong>
+            <span>Review daily and monthly report summaries from previous periods.</span>
+        </a>
+    </div>
+</div>
+
+<style>
+    .home-page {
+        color: #18230f;
+        margin: 0 auto;
+        max-width: 980px;
+    }
+
+    .home-header {
+        margin-bottom: 1.25rem;
+    }
+
+    .eyebrow {
+        color: #bd6f00;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        margin: 0 0 0.35rem;
+        text-transform: uppercase;
+    }
+
+    .home-title {
+        color: #174a21;
+        font-size: 2rem;
+        font-weight: 900;
+        letter-spacing: 0;
+        margin: 0;
+    }
+
+    .home-subtitle {
+        color: #334155;
+        font-weight: 700;
+        margin: 0.4rem 0 0;
+    }
+
+    .home-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .home-card {
+        background: #fff;
+        border: 2px solid #9cae9f;
+        border-left: 7px solid #16803a;
+        border-radius: 8px;
+        box-shadow: 0 3px 10px rgba(24, 35, 15, 0.08);
+        color: #18230f;
+        display: block;
+        min-height: 170px;
+        padding: 1rem;
+        text-decoration: none;
+        transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .home-card:hover {
+        border-color: #16803a;
+        transform: translateY(-2px);
+    }
+
+    .home-card-label {
+        color: #bd6f00;
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 900;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+    }
+
+    .home-card strong {
+        color: #174a21;
+        display: block;
+        font-size: 1.35rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .home-card span:last-child {
+        color: #334155;
+        font-weight: 700;
+        line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+        .home-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 {% endblock %}

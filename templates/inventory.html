@@ -1,6 +1,18 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>Inventory Module</h2>
-<p>Inventory features will go here.</p>
+{% include 'inventory/_inventory_styles.html' %}
+
+<div class="inventory-page">
+    <div class="inventory-header">
+        <div>
+            <h2 class="inventory-title">Inventory Module</h2>
+            <p class="inventory-subtitle">Manage products, stock levels, restocking, and printable stock checks.</p>
+        </div>
+        <div class="inventory-actions">
+            <a href="{% url 'inventory_dashboard' %}" class="btn btn-primary">Open Dashboard</a>
+            <a href="{% url 'inventory_list' %}" class="btn btn-muted">Inventory List</a>
+        </div>
+    </div>
+</div>
 {% endblock %}

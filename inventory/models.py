@@ -16,9 +16,22 @@ STATUS_CHOICES = [
 	("Out of Stock", "Out of Stock"),
 ]
 
+
+class Category(models.Model):
+	name = models.CharField(max_length=50, unique=True)
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ["name"]
+		verbose_name_plural = "Categories"
+
+	def __str__(self):
+		return self.name
+
+
 class InventoryItem(models.Model):
 	item_name = models.CharField(max_length=100)
-	category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+	category = models.CharField(max_length=50)
 	unit_price = models.DecimalField(max_digits=8, decimal_places=2)
 	quantity_in_stock = models.PositiveIntegerField()
 	minimum_stock_level = models.PositiveIntegerField()

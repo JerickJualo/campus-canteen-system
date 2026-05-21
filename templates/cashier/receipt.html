@@ -10,7 +10,32 @@
             font-family: 'Courier New', monospace;
             margin: 0;
             padding: 20px;
-            background-color: #f5f5f5;
+            background: #eef5ef;
+        }
+
+        .receipt-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 0 auto 16px;
+            max-width: 400px;
+        }
+
+        .action-button {
+            border: 1px solid #174a21;
+            border-radius: 4px;
+            color: #174a21;
+            cursor: pointer;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 8px 12px;
+            text-decoration: none;
+        }
+
+        .action-button.primary {
+            background: #174a21;
+            color: #fff;
         }
 
         .receipt-container {
@@ -105,22 +130,6 @@
             font-size: 11px;
         }
 
-        .print-button {
-            display: block;
-            margin: 20px auto;
-            padding: 10px 20px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .print-button:hover {
-            background: #0056b3;
-        }
-
         @media print {
             body {
                 background-color: white;
@@ -133,7 +142,7 @@
                 margin: 0;
             }
 
-            .print-button {
+            .receipt-actions {
                 display: none;
             }
         }
@@ -141,6 +150,11 @@
 </head>
 
 <body>
+    <div class="receipt-actions">
+        <a class="action-button" href="{% url 'cashier' %}">Back to Cashier</a>
+        <button class="action-button primary" onclick="window.print()">Print Receipt</button>
+    </div>
+
     <div class="receipt-container">
         <div class="header">
             <h2>CAMPUS CANTEEN</h2>
@@ -186,8 +200,6 @@
             <p>Please come again</p>
         </div>
     </div>
-
-    <button class="print-button" onclick="window.print()">Print Receipt</button>
 
     <script>
         // Auto-print functionality
