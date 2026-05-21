@@ -18,6 +18,7 @@
             font-size: 2.2rem;
             margin-bottom: 1.5rem;
             background: linear-gradient(90deg, #4a90e2, #7f5fc6);
+            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -98,7 +99,7 @@
                     <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
                     <td>{{ receipt.receipt_number }}</td>
                     <td>{{ receipt.created_at|date:"Y-m-d H:i" }}</td>
-                    <td>${{ receipt.sale.total_amount|floatformat:2 }}</td>
+                    <td>PHP {{ receipt.sale.total_amount|floatformat:2 }}</td>
                     <td><a class="receipt-link" href="{% url 'generate_receipt' receipt.sale.id %}">View</a></td>
                 </tr>
                 {% empty %}

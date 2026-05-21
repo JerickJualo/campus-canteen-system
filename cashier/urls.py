@@ -31,6 +31,7 @@ urlpatterns = [
     path('reports/history/', views.report_history, name='report_history'),
     path('reports/history/daily/', views.daily_report_history, name='daily_report_history'),
     path('reports/history/monthly/', views.monthly_report_history, name='monthly_report_history'),
-   path('daily/cashier/', views.daily_report, name='cashier_home'),
+    path('receipt-history/', views.receipt_history, name='receipt_history'),
+    path('daily/cashier/', views.daily_report, name='cashier_home'),
     path('receipt/<int:receipt_id>/delete/', views.delete_receipt, name='delete_receipt'),
 ]

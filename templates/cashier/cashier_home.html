@@ -208,7 +208,7 @@
             <div class="inv-message success" style="margin-top: 15px;">
                 <div style="margin-bottom: 8px;">Receipt #{{ receipt_number }} generated</div>
                 <button type="button" class="btn btn-primary" style="margin-top: 8px;"
-                    onclick="showReceiptModal('{{ receipt_id }}')">
+                    onclick="showReceiptModal('{{ receipt_sale_id }}')">
                     View Receipt
                 </button>
             </div>
@@ -221,6 +221,7 @@
     <button type="button" class="btn btn-primary" onclick="toggleReceiptHistory()" style="margin-left: 8px;">
         Receipt History
     </button>
+    <a href="{% url 'receipt_history' %}" class="btn btn-muted">Full Receipt History</a>
 </div>
 
 <!-- Receipt History Section (inline, toggled) -->

@@ -1,5 +1,6 @@
 from collections import _OrderedDictItemsView, OrderedDict
 from datetime import timedelta, datetime, date
+from decimal import Decimal, InvalidOperation
 import os
 
 from config import settings
@@ -68,7 +69,13 @@ def add_to_cart(request, item_id):
     cart = request.session.get('cart', {})
     item_id = str(item_id)
 
-    qty = int(request.GET.get('qty', 1))
+    try:
+        qty = int(request.GET.get('qty', 1))
+    except (TypeError, ValueError):
+        qty = 1
+
+    if qty < 1:
+        qty = 1
 
     if item_id in cart:
         new_qty = cart[item_id]['quantity'] + qty
@@ -82,7 +89,7 @@ def add_to_cart(request, item_id):
         cart[item_id] = {
             'name': item.item_name,
             'price': float(item.unit_price),
-            'quantity': qty
+            'quantity': min(qty, item.quantity_in_stock)
         }
 
     request.session['cart'] = cart
@@ -133,17 +140,30 @@ def decrease_quantity(request, item_id):
 
 def checkout(request):
     cart = request.session.get('cart', {})
+    available_items = InventoryItem.objects.filter(quantity_in_stock__gt=0)
+    recent_receipts = Receipt.objects.select_related('sale').order_by('-created_at')[:20]
 
     if not cart:
         return redirect('cashier')
 
-    total = 0
+    total = Decimal('0.00')
 
     for item_id, item in cart.items():
-        total += item['price'] * item['quantity']
+        total += Decimal(str(item['price'])) * item['quantity']
 
     if request.method == 'POST':
-        cash = float(request.POST.get('cash'))
+        try:
+            cash = Decimal(request.POST.get('cash', '0'))
+        except (InvalidOperation, TypeError):
+            return render(request, 'cashier/cashier_home.html', {
+                'error': 'Please enter a valid payment amount.',
+                'cash': '',
+                'total': total,
+                'change': 0,
+                'items': available_items,
+                'cart': cart,
+                'recent_receipts': recent_receipts,
+            })
 
         if cash < total:
             return render(request, 'cashier/cashier_home.html', {
@@ -151,8 +171,9 @@ def checkout(request):
                 'cash': cash,
                 'total': total,
                 'change': 0,
-                'items': InventoryItem.objects.all(),
-                'cart': cart
+                'items': available_items,
+                'cart': cart,
+                'recent_receipts': recent_receipts,
             })
 
         change = cash - total
@@ -165,7 +186,8 @@ def checkout(request):
                     'error': f'Not enough stock for {inventory_item.item_name}.',
                     'items': InventoryItem.objects.filter(quantity_in_stock__gt=0),
                     'cart': cart,
-                    'total': total
+                    'total': total,
+                    'recent_receipts': recent_receipts,
                 })
 
         # deduct stock and save the completed sale for reporting
@@ -190,7 +212,7 @@ def checkout(request):
                 sale=sale,
                 item_name=item['name'],
                 quantity=item['quantity'],
-                price=item['price']
+                price=Decimal(str(item['price']))
             )
 
         # clear cart after successful transaction
@@ -213,7 +235,9 @@ def checkout(request):
             'cart': {},
             'low_stock_alerts': low_stock_alerts,
             'receipt_id': receipt.id,
+            'receipt_sale_id': sale.id,
             'receipt_number': receipt.receipt_number,
+            'recent_receipts': Receipt.objects.select_related('sale').order_by('-created_at')[:20],
         })
 
     return redirect('cashier')
