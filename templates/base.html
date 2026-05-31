@@ -126,6 +126,18 @@
             font-size: 0.95rem;
         }
 
+        .sidebar-badge {
+            background: #eab308;
+            border-radius: 999px;
+            color: #1f1300;
+            font-size: 0.72rem;
+            font-weight: 900;
+            margin-left: auto;
+            min-width: 1.35rem;
+            padding: 0.12rem 0.45rem;
+            text-align: center;
+        }
+
         .sidebar-link:hover {
             background: rgba(255, 255, 255, 0.08);
             color: #ffffff;
@@ -592,12 +604,18 @@
                 </a>
                 <a href="/inventory/" class="sidebar-link" id="link-inventory">
                     Inventory
+                    {% if global_stock_alert_count %}
+                    <span class="sidebar-badge">{{ global_stock_alert_count }}</span>
+                    {% endif %}
                 </a>
                 <a href="/cashier/reports/history/" class="sidebar-link" id="link-reports">
                     Sales Reports
                 </a>
                 <a href="/accounts/manage/" class="sidebar-link" id="link-users">
                     User Accounts
+                </a>
+                <a href="/activity/" class="sidebar-link" id="link-activity">
+                    Activity Log
                 </a>
                 {% elif user.profile.role == 'monitor' %}
                 <a href="/cashier/monitor/" class="sidebar-link" id="link-monitor">
@@ -694,6 +712,7 @@
                 'link-inventory': /^\/inventory/,
                 'link-reports': /^\/cashier\/reports/,
                 'link-users': /^\/accounts\/manage/,
+                'link-activity': /^\/activity/,
                 'link-monitor': /^\/cashier\/monitor/,
                 'link-inventory-list': /^\/inventory\/list/,
                 'link-inventory-history': /^\/inventory\/history/,

@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block content %}
+{% include 'inventory/_inventory_styles.html' %}
+
+<div class="inventory-page">
+    <div class="inventory-header">
+        <div>
+            <p class="eyebrow">Administration</p>
+            <h2 class="inventory-title">Activity Log</h2>
+            <p class="inventory-subtitle">Review important cashier, inventory, user, and report actions.</p>
+        </div>
+    </div>
+
+    <div class="filter-panel screen-only">
+        <form method="get" class="activity-filter-form">
+            <div class="filter-field">
+                <label for="search">Search</label>
+                <input id="search" type="text" name="search" value="{{ search_query }}" placeholder="Description">
+            </div>
+            <div class="filter-field">
+                <label for="action">Action</label>
+                <select id="action" name="action">
+                    <option value="">All Actions</option>
+                    {% for value, label in action_choices %}
+                        <option value="{{ value }}" {% if action_filter == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Apply</button>
+            <a href="{% url 'activity_log' %}" class="btn btn-muted">Reset</a>
+        </form>
+    </div>
+
+    <div class="inventory-table-wrap">
+        <table class="inventory-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Action</th>
+                    <th>User</th>
+                    <th>Target</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in page_obj.object_list %}
+                    <tr>
+                        <td>{{ log.created_at|date:"M d, Y h:i A" }}</td>
+                        <td><span class="badge badge-ok">{{ log.get_action_type_display }}</span></td>
+                        <td>{% if log.user %}{{ log.user.username }}{% else %}<span class="muted">System</span>{% endif %}</td>
+                        <td>{{ log.target|default:"-" }}</td>
+                        <td>{{ log.description }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" class="empty-state">No activity has been recorded yet.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="activity-pagination screen-only">
+        {% if page_obj.has_previous %}
+            <a class="btn btn-muted" href="?{% if query_params %}{{ query_params }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+        {% endif %}
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+            <a class="btn btn-muted" href="?{% if query_params %}{{ query_params }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .activity-filter-form {
+        align-items: end;
+        display: grid;
+        gap: 0.85rem;
+        grid-template-columns: 2fr minmax(180px, 1fr) auto auto;
+    }
+
+    .activity-pagination {
+        align-items: center;
+        color: #334155;
+        display: flex;
+        font-weight: 800;
+        gap: 0.75rem;
+        justify-content: center;
+        margin-top: 1rem;
+    }
+
+    @media (max-width: 900px) {
+        .activity-filter-form {
+            display: block;
+        }
+
+        .activity-filter-form .filter-field,
+        .activity-filter-form .btn {
+            margin-top: 0.75rem;
+        }
+    }
+</style>
+{% endblock %}

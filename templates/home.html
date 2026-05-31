@@ -9,6 +9,13 @@
         <p class="home-subtitle">Open the cashier counter, manage stock, or review sales activity.</p>
     </div>
 
+    {% if is_admin and global_stock_alert_count %}
+    <a class="stock-alert-banner" href="{% url 'inventory_list' %}?stock_status=low_stock">
+        <strong>{{ global_stock_alert_count }} stock alert{{ global_stock_alert_count|pluralize }}</strong>
+        <span>{{ global_low_stock_count }} low stock, {{ global_out_of_stock_count }} out of stock</span>
+    </a>
+    {% endif %}
+
     <div class="home-grid {% if is_admin %}home-grid-admin{% elif role == 'monitor' %}home-grid-monitor{% else %}home-grid-single{% endif %}">
         {% if role == 'cashier' or is_admin %}
         <a class="home-card" href="{% url 'cashier' %}">
@@ -105,6 +112,31 @@
         gap: 1rem;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         margin: 0 auto;
+    }
+
+    .stock-alert-banner {
+        align-items: center;
+        background: #fff7e8;
+        border: 2px solid #ef8f00;
+        border-left: 7px solid #b42318;
+        border-radius: 8px;
+        color: #18230f;
+        display: flex;
+        gap: 0.75rem;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding: 0.85rem 1rem;
+        text-decoration: none;
+    }
+
+    .stock-alert-banner strong {
+        color: #9f1d16;
+        font-weight: 900;
+    }
+
+    .stock-alert-banner span {
+        color: #334155;
+        font-weight: 800;
     }
 
     .home-grid-admin {

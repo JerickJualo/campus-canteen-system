@@ -14,7 +14,8 @@ from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 
 from accounts.decorators import admin_required, cashier_required
-from cashier.models import Sale, SaleItem, Receipt
+from cashier.models import CashierShift, Sale, SaleItem, Receipt
+from core.models import log_activity
 from inventory.models import InventoryItem
 
 
@@ -24,10 +25,46 @@ def get_request_role(request):
     return 'cashier'
 
 
+def get_default_cashier_name(request):
+    if request.user.is_authenticated:
+        return request.user.get_full_name() or request.user.get_username()
+    return 'Cashier'
+
+
+def get_active_shift(request):
+    if not request.user.is_authenticated:
+        return None
+    return CashierShift.objects.filter(
+        cashier=request.user,
+        ended_at__isnull=True,
+    ).order_by('-started_at').first()
+
+
+def get_or_start_shift(request, cashier_name=None):
+    shift = get_active_shift(request)
+    if shift:
+        return shift
+
+    return CashierShift.objects.create(
+        cashier=request.user if request.user.is_authenticated else None,
+        cashier_name=cashier_name or get_default_cashier_name(request),
+        opening_note='Started automatically at checkout',
+    )
+
+
+def mark_sale_voided(sale, request, reason):
+    sale.is_voided = True
+    sale.void_reason = reason
+    sale.voided_at = timezone.now()
+    sale.voided_by = request.user if request.user.is_authenticated else None
+    sale.save(update_fields=['is_voided', 'void_reason', 'voided_at', 'voided_by'])
+
+
 @cashier_required
 def cashier_home(request):
     search_query = request.GET.get('search', '').strip()
     items = InventoryItem.objects.filter(quantity_in_stock__gt=0)
+    active_shift = get_active_shift(request)
 
     if search_query:
         items = items.filter(item_name__icontains=search_query)
@@ -47,7 +84,44 @@ def cashier_home(request):
         'cart': cart,
         'total': total,
         'recent_receipts': recent_receipts,
+        'active_shift': active_shift,
+        'cashier_name': active_shift.cashier_name if active_shift else get_default_cashier_name(request),
     })
+
+
+@cashier_required
+def start_shift(request):
+    if request.method == 'POST':
+        if get_active_shift(request):
+            messages.info(request, 'You already have an active cashier shift.')
+            return redirect('cashier')
+
+        cashier_name = request.POST.get('cashier_name', '').strip() or get_default_cashier_name(request)
+        opening_note = request.POST.get('opening_note', '').strip()
+        CashierShift.objects.create(
+            cashier=request.user,
+            cashier_name=cashier_name,
+            opening_note=opening_note,
+        )
+        log_activity(request.user, 'shift', f'Started cashier shift for {cashier_name}', cashier_name)
+        messages.success(request, f'Shift started for {cashier_name}.')
+    return redirect('cashier')
+
+
+@cashier_required
+def end_shift(request):
+    if request.method == 'POST':
+        shift = get_active_shift(request)
+        if not shift:
+            messages.warning(request, 'No active cashier shift to end.')
+            return redirect('cashier')
+
+        shift.ended_at = timezone.now()
+        shift.closing_note = request.POST.get('closing_note', '').strip()
+        shift.save(update_fields=['ended_at', 'closing_note'])
+        log_activity(request.user, 'shift', f'Ended cashier shift for {shift.cashier_name}', shift.cashier_name)
+        messages.success(request, 'Cashier shift ended successfully.')
+    return redirect('cashier')
 
 
 @cashier_required
@@ -163,6 +237,7 @@ def checkout(request):
     cart = request.session.get('cart', {})
     available_items = InventoryItem.objects.filter(quantity_in_stock__gt=0)
     recent_receipts = Receipt.objects.select_related('sale').order_by('-created_at')[:20]
+    active_shift = get_active_shift(request)
 
     if not cart:
         return redirect('cashier')
@@ -195,6 +270,7 @@ def checkout(request):
                 'recent_receipts': recent_receipts,
                 'cashier_name': cashier_name,
                 'payment_method': payment_method,
+                'active_shift': active_shift,
             })
 
         if cash < total and payment_method.lower() == 'cash':
@@ -208,6 +284,7 @@ def checkout(request):
                 'recent_receipts': recent_receipts,
                 'cashier_name': cashier_name,
                 'payment_method': payment_method,
+                'active_shift': active_shift,
             })
 
         change = cash - total
@@ -236,11 +313,13 @@ def checkout(request):
                         'recent_receipts': recent_receipts,
                         'cashier_name': cashier_name,
                         'payment_method': payment_method,
+                        'active_shift': active_shift,
                     })
 
             sale = Sale.objects.create(
                 total_amount=total,
-                created_at=timezone.now()
+                created_at=timezone.now(),
+                shift=get_or_start_shift(request, cashier_name),
             )
 
             for item_id, item in cart.items():
@@ -269,6 +348,12 @@ def checkout(request):
                 cash_received=cash,
                 change_amount=change,
             )
+            log_activity(
+                request.user,
+                'checkout',
+                f'Completed receipt #{receipt.receipt_number} via {payment_method} for PHP {total}',
+                receipt.receipt_number,
+            )
 
         # clear cart after successful transaction
         request.session['cart'] = {}
@@ -285,6 +370,8 @@ def checkout(request):
             'receipt_sale_id': sale.id,
             'receipt_number': receipt.receipt_number,
             'recent_receipts': Receipt.objects.select_related('sale').order_by('-created_at')[:20],
+            'active_shift': get_active_shift(request),
+            'cashier_name': cashier_name,
         })
 
     return redirect('cashier')
@@ -296,10 +383,12 @@ def receipt_history(request):
     Shows receipt number, sale date, total amount, and a link to view the
     individual receipt.
     """
-    receipt_qs = Receipt.objects.select_related('sale').order_by('-created_at')
+    receipt_qs = Receipt.objects.select_related('sale', 'sale__shift').order_by('-created_at')
     search_query = request.GET.get('search', '').strip()
     cashier_filter = request.GET.get('cashier', '').strip()
     payment_filter = request.GET.get('payment_method', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    shift_filter = request.GET.get('shift', '').strip()
     date_from = request.GET.get('date_from', '').strip()
     date_to = request.GET.get('date_to', '').strip()
     min_total = request.GET.get('min_total', '').strip()
@@ -316,6 +405,14 @@ def receipt_history(request):
 
     if payment_filter:
         receipt_qs = receipt_qs.filter(payment_method=payment_filter)
+
+    if status_filter == 'completed':
+        receipt_qs = receipt_qs.filter(sale__is_voided=False)
+    elif status_filter == 'voided':
+        receipt_qs = receipt_qs.filter(sale__is_voided=True)
+
+    if shift_filter:
+        receipt_qs = receipt_qs.filter(sale__shift_id=shift_filter)
 
     if date_from:
         receipt_qs = receipt_qs.filter(created_at__date__gte=date_from)
@@ -335,6 +432,11 @@ def receipt_history(request):
         'payment_method',
         flat=True,
     ).distinct().order_by('payment_method')
+    cashier_names = Receipt.objects.exclude(cashier_name='').values_list(
+        'cashier_name',
+        flat=True,
+    ).distinct().order_by('cashier_name')
+    shifts = CashierShift.objects.all()[:50]
     # Pagination
     paginator = Paginator(receipt_qs, 20)
     page_number = request.GET.get('page')
@@ -344,10 +446,14 @@ def receipt_history(request):
     return render(request, 'cashier/receipt_history.html', {
         'page_obj': page_obj,
         'payment_methods': payment_methods,
+        'cashier_names': cashier_names,
+        'shifts': shifts,
         'query_params': query_params.urlencode(),
         'search_query': search_query,
         'cashier_filter': cashier_filter,
         'payment_filter': payment_filter,
+        'status_filter': status_filter,
+        'shift_filter': shift_filter,
         'date_from': date_from,
         'date_to': date_to,
         'min_total': min_total,
@@ -361,14 +467,24 @@ def void_receipt(request, receipt_id):
     if request.method == 'POST':
         receipt = get_object_or_404(Receipt, id=receipt_id)
         sale = receipt.sale
+        reason = request.POST.get('void_reason', '').strip()
         
         if sale.is_voided:
             messages.warning(request, f'Receipt #{receipt.receipt_number} is already voided.')
             return redirect('receipt_history')
+
+        if not reason:
+            messages.error(request, 'A void reason is required before a receipt can be voided.')
+            return redirect('receipt_history')
             
         with transaction.atomic():
-            sale.is_voided = True
-            sale.save(update_fields=['is_voided'])
+            mark_sale_voided(sale, request, reason)
+            log_activity(
+                request.user,
+                'void',
+                f'Voided receipt #{receipt.receipt_number}: {reason}',
+                receipt.receipt_number,
+            )
             
             # Revert stock
             reverted_items = []
@@ -384,7 +500,7 @@ def void_receipt(request, receipt_id):
             
             messages.success(
                 request, 
-                f'Receipt #{receipt.receipt_number} has been voided. Restored stock: {", ".join(reverted_items)}.'
+                f'Receipt #{receipt.receipt_number} has been voided. Reason: {reason}. Restored stock: {", ".join(reverted_items)}.'
             )
     return redirect('receipt_history')
 
@@ -436,6 +552,14 @@ def daily_report(request, year=None, month=None, day=None):
         item_name__in=sold_item_names
     ).values('item_name', 'quantity_in_stock', 'unit_price').order_by('-quantity_in_stock')
 
+    payment_summary = Receipt.objects.filter(
+        sale__created_at__date=report_date,
+        sale__is_voided=False,
+    ).values('payment_method').annotate(
+        transaction_count=models.Count('id'),
+        total_amount=Sum('sale__total_amount'),
+    ).order_by('payment_method')
+
     return render(request, 'report/daily.html', {
         'sales': sales, # keep all sales for audit logs
         'total': total,
@@ -448,6 +572,7 @@ def daily_report(request, year=None, month=None, day=None):
         'items_sold': items_sold,
         'low_stock_items': low_stock_items,
         'fast_moving_items': fast_moving_items,
+        'payment_summary': payment_summary,
     })
 
 
@@ -512,6 +637,15 @@ def monthly_report(request, year=None, month=None):
         total_qty_added=Sum('quantity_added')
     ).order_by('-restock_count')[:5]
 
+    payment_summary = Receipt.objects.filter(
+        sale__created_at__year=report_year,
+        sale__created_at__month=report_month,
+        sale__is_voided=False,
+    ).values('payment_method').annotate(
+        transaction_count=models.Count('id'),
+        total_amount=Sum('sale__total_amount'),
+    ).order_by('payment_method')
+
     month_name = datetime(report_year, report_month, 1).strftime('%B')
     
     return render(request, 'report/monthly.html', {
@@ -530,6 +664,7 @@ def monthly_report(request, year=None, month=None):
         'low_stock_items': low_stock_items,
         'total_restocks_count': total_restocks_count,
         'total_quantity_restocked': total_quantity_restocked,
+        'payment_summary': payment_summary,
     })
 
 
@@ -537,13 +672,17 @@ def monthly_report(request, year=None, month=None):
 def void_daily_report(request):
     """Void all active sales records for today and restore stock."""
     if request.method == 'POST':
+        reason = request.POST.get('void_reason', '').strip()
+        if not reason:
+            messages.error(request, 'A void reason is required before daily sales can be voided.')
+            return redirect('daily_report')
+
         today = now().date()
         sales_to_void = Sale.objects.filter(created_at__date=today, is_voided=False)
         count = 0
         with transaction.atomic():
             for sale in sales_to_void:
-                sale.is_voided = True
-                sale.save(update_fields=['is_voided'])
+                mark_sale_voided(sale, request, reason)
                 for sale_item in sale.saleitem_set.all():
                     inventory_item = sale_item.inventory_item
                     if inventory_item is None:
@@ -553,7 +692,8 @@ def void_daily_report(request):
                     inventory_item.save()
                 count += 1
         
-        messages.success(request, f'Successfully voided {count} sales records for today and restored stock.')
+        messages.success(request, f'Successfully voided {count} sales records for today and restored stock. Reason: {reason}.')
+        log_activity(request.user, 'void', f'Voided {count} daily sales records: {reason}', str(today))
     return redirect('daily_report')
 
 
@@ -561,6 +701,11 @@ def void_daily_report(request):
 def void_monthly_report(request):
     """Void all active sales records for the current month and restore stock."""
     if request.method == 'POST':
+        reason = request.POST.get('void_reason', '').strip()
+        if not reason:
+            messages.error(request, 'A void reason is required before monthly sales can be voided.')
+            return redirect('monthly_report')
+
         today = now()
         current_month = today.month
         current_year = today.year
@@ -573,8 +718,7 @@ def void_monthly_report(request):
         count = 0
         with transaction.atomic():
             for sale in sales_to_void:
-                sale.is_voided = True
-                sale.save(update_fields=['is_voided'])
+                mark_sale_voided(sale, request, reason)
                 for sale_item in sale.saleitem_set.all():
                     inventory_item = sale_item.inventory_item
                     if inventory_item is None:
@@ -584,7 +728,8 @@ def void_monthly_report(request):
                     inventory_item.save()
                 count += 1
         
-        messages.success(request, f'Successfully voided {count} sales records for {today.strftime("%B %Y")} and restored stock.')
+        messages.success(request, f'Successfully voided {count} sales records for {today.strftime("%B %Y")} and restored stock. Reason: {reason}.')
+        log_activity(request.user, 'void', f'Voided {count} monthly sales records: {reason}', today.strftime('%B %Y'))
     return redirect('monthly_report')
 
 

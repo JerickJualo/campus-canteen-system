@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from .models import CATEGORY_CHOICES, Category, InventoryItem, RestockHistory
 from accounts.decorators import admin_required
+from core.models import log_activity
 
 
 def get_request_role(request):
@@ -24,7 +25,7 @@ def get_restock_user(request):
 
 
 def record_restock(item, quantity_added, previous_quantity, request, note=''):
-    return RestockHistory.objects.create(
+    record = RestockHistory.objects.create(
         inventory_item=item,
         quantity_added=quantity_added,
         previous_quantity=previous_quantity,
@@ -32,6 +33,13 @@ def record_restock(item, quantity_added, previous_quantity, request, note=''):
         restocked_by=get_restock_user(request),
         note=note,
     )
+    log_activity(
+        get_restock_user(request),
+        'restock',
+        f'Restocked {item.item_name}: {previous_quantity} to {item.quantity_in_stock}',
+        item.item_name,
+    )
+    return record
 
 
 def get_category_names():
@@ -383,6 +391,7 @@ def add_inventory_item(request):
         if form.is_valid():
             item = form.save()
             messages.success(request, f'{item.item_name} was added successfully.')
+            log_activity(request.user, 'inventory', f'Added inventory item {item.item_name}', item.item_name)
             return redirect('inventory_list')
         messages.error(request, 'Please correct the errors below before adding the item.')
     else:
@@ -399,6 +408,7 @@ def edit_inventory_item(request, pk):
         if form.is_valid():
             item = form.save()
             messages.success(request, f'{item.item_name} was updated successfully.')
+            log_activity(request.user, 'inventory', f'Updated inventory item {item.item_name}', item.item_name)
             return redirect('inventory_list')
         messages.error(request, 'Please correct the errors below before saving changes.')
     else:
@@ -421,5 +431,6 @@ def delete_inventory_item(request, pk):
         item_name = item.item_name
         item.delete()
         messages.success(request, f'{item_name} was deleted successfully.')
+        log_activity(request.user, 'inventory', f'Deleted inventory item {item_name}', item_name)
         return redirect('inventory_list')
     return render(request, 'inventory/delete_inventory_item.html', {'item': item})

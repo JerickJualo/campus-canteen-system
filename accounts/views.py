@@ -62,6 +62,7 @@ def logout_view(request):
 
 from accounts.decorators import admin_required
 from accounts.models import UserProfile
+from core.models import log_activity
 
 class UserCreationForm(forms.Form):
     username = forms.CharField(max_length=150, widget=forms.TextInput(attrs={
@@ -115,6 +116,7 @@ def manage_users(request):
                     new_user.profile.save()
 
                 messages.success(request, f"Successfully created user account '{username}' with role '{role.capitalize()}'.")
+                log_activity(request.user, 'user', f"Created {role} account '{username}'", username)
                 return redirect('manage_users')
     else:
         form = UserCreationForm()

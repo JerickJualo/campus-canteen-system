@@ -16,6 +16,7 @@
                 {% if sales.count > 0 %}
                 <form action="{% url 'void_monthly_report' %}" method="post" style="display: inline;" onsubmit="return confirmVoidMonthly()">
                     {% csrf_token %}
+                    <input type="text" name="void_reason" required placeholder="Void reason" class="report-void-reason">
                     <button type="submit" class="btn btn-danger" style="margin-left: 0;">Void Month's Sales</button>
                 </form>
                 {% endif %}
@@ -77,6 +78,35 @@
     </section>
 
     <div class="report-grid">
+        {% if payment_summary %}
+        <section class="report-panel">
+            <div class="section-heading">
+                <h3>Payment Methods</h3>
+                <span>Revenue by payment type</span>
+            </div>
+            <div class="table-card">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>Payment Method</th>
+                            <th>Transactions</th>
+                            <th>Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payment_summary %}
+                            <tr>
+                                <td>{{ payment.payment_method }}</td>
+                                <td>{{ payment.transaction_count }}</td>
+                                <td>PHP {{ payment.total_amount|floatformat:2 }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
         {% if best_sellers %}
         <section class="report-panel">
             <div class="section-heading">
@@ -312,6 +342,17 @@
         flex-wrap: wrap;
         gap: 0.6rem;
         justify-content: flex-end;
+    }
+
+    .report-void-reason {
+        border: 2px solid #82927e;
+        border-radius: 6px;
+        box-sizing: border-box;
+        color: #18230f;
+        font-weight: 700;
+        margin-right: 0.35rem;
+        max-width: 180px;
+        padding: 0.65rem 0.75rem;
     }
 
     .polished-summary {

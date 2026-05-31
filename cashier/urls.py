@@ -13,6 +13,8 @@ from .views import (
 
 urlpatterns = [
     path('', cashier_home, name='cashier'),
+    path('shift/start/', views.start_shift, name='start_shift'),
+    path('shift/end/', views.end_shift, name='end_shift'),
     path('monitor/', views.monitor_dashboard, name='monitor_dashboard'),
     path('search/', cashier_search, name='cashier_search'),
     path('add/<int:item_id>/', add_to_cart, name='add_to_cart'),

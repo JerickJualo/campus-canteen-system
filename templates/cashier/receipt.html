@@ -204,6 +204,9 @@
             <p><strong>Receipt No:</strong> {{ receipt.receipt_number }}</p>
             <p><strong>Date:</strong> {{ receipt.created_at|date:"Y-m-d H:i" }}</p>
             <p><strong>Cashier:</strong> {{ receipt.cashier_name }}</p>
+            {% if sale.shift %}
+            <p><strong>Shift Started:</strong> {{ sale.shift.started_at|date:"Y-m-d H:i" }}</p>
+            {% endif %}
             <p><strong>Payment:</strong> {{ receipt.payment_method }}</p>
             <p><strong>Cash Received:</strong> PHP {{ receipt.cash_received|floatformat:2 }}</p>
             <p><strong>Change:</strong> PHP {{ receipt.change_amount|floatformat:2 }}</p>
@@ -241,6 +244,9 @@
         <div class="footer">
             {% if sale.is_voided %}
                 <p style="color: #dc2626; font-weight: bold;">THIS RECEIPT HAS BEEN VOIDED</p>
+                {% if sale.void_reason %}
+                    <p><strong>Reason:</strong> {{ sale.void_reason }}</p>
+                {% endif %}
             {% else %}
                 <p>Thank you for your purchase!</p>
                 <p>Please come again</p>

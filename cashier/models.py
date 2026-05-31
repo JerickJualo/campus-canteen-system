@@ -1,11 +1,54 @@
+from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from inventory.models import InventoryItem
+
+
+class CashierShift(models.Model):
+    cashier = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cashier_shifts',
+    )
+    cashier_name = models.CharField(max_length=100)
+    started_at = models.DateTimeField(default=timezone.now)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    opening_note = models.CharField(max_length=255, blank=True)
+    closing_note = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ['-started_at']
+
+    @property
+    def is_open(self):
+        return self.ended_at is None
+
+    def __str__(self):
+        return f"{self.cashier_name} - {self.started_at:%Y-%m-%d %H:%M}"
     
 class Sale(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     is_voided = models.BooleanField(default=False)
+    void_reason = models.CharField(max_length=255, blank=True)
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='voided_sales',
+    )
+    shift = models.ForeignKey(
+        CashierShift,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sales',
+    )
 
 class SaleItem(models.Model):
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE)

@@ -103,6 +103,7 @@ class CanteenSystemTests(TestCase):
         receipt = Receipt.objects.get(sale=sale)
         self.assertEqual(sale.total_amount, Decimal('150.00'))
         self.assertEqual(sale.is_voided, False)
+        self.assertIsNotNone(sale.shift)
         self.assertEqual(receipt.receipt_number.startswith('R'), True)
 
         # Log in as Admin to void the receipt
@@ -110,12 +111,15 @@ class CanteenSystemTests(TestCase):
         self.client.login(username='admin', password='admin123')
 
         # Void transaction
-        response = self.client.post(reverse('void_receipt', args=[receipt.id]))
+        response = self.client.post(reverse('void_receipt', args=[receipt.id]), {
+            'void_reason': 'Customer returned order'
+        })
         self.assertRedirects(response, reverse('receipt_history'))
 
         # Verify sale is marked voided
         sale.refresh_from_db()
         self.assertEqual(sale.is_voided, True)
+        self.assertEqual(sale.void_reason, 'Customer returned order')
 
         # Verify stock restored
         self.test_item.refresh_from_db()

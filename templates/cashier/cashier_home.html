@@ -12,6 +12,36 @@
 
     </div>
 
+    <div class="filter-panel">
+        {% if active_shift %}
+            <div class="shift-bar">
+                <div>
+                    <span class="badge badge-ok">Shift Open</span>
+                    <strong>{{ active_shift.cashier_name }}</strong>
+                    <span class="muted">Started {{ active_shift.started_at|date:"M d, Y h:i A" }}</span>
+                </div>
+                <form method="post" action="{% url 'end_shift' %}" class="shift-inline-form">
+                    {% csrf_token %}
+                    <input type="text" name="closing_note" placeholder="Closing note (optional)">
+                    <button type="submit" class="btn btn-danger">End Shift</button>
+                </form>
+            </div>
+        {% else %}
+            <form method="post" action="{% url 'start_shift' %}" class="shift-start-form">
+                {% csrf_token %}
+                <div class="filter-field">
+                    <label for="shift-cashier-name">Cashier Name</label>
+                    <input id="shift-cashier-name" type="text" name="cashier_name" value="{{ cashier_name|default:'Cashier' }}">
+                </div>
+                <div class="filter-field">
+                    <label for="opening-note">Opening Note</label>
+                    <input id="opening-note" type="text" name="opening_note" placeholder="Optional note">
+                </div>
+                <button type="submit" class="btn btn-success">Start Shift</button>
+            </form>
+        {% endif %}
+    </div>
+
     <div class="filter-panel" id="search-section">
         <div class="search-area">
             <div class="filter-field">
@@ -272,7 +302,7 @@
                         {% if r.sale.is_voided %}
                             <span class="badge badge-out" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; border-radius: 6px;">Voided</span>
                         {% else %}
-                            <form method="post" action="{% url 'void_receipt' r.id %}" style="display:inline; margin-left:4px;" onsubmit="return confirmVoidReceiptHome('{{ r.receipt_number }}')">
+                            <form method="post" action="{% url 'void_receipt' r.id %}" style="display:inline; margin-left:4px;" onsubmit="return confirmVoidReceiptHome(this, '{{ r.receipt_number }}')">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-danger btn-sm" style="font-size: 0.8rem; padding: 0.35rem 0.6rem; border-radius: 6px;">
                                     Void
@@ -473,6 +503,25 @@ document.addEventListener('click', function(e) {
         return confirm("🛑 Warning: Are you sure you want to VOID Receipt #" + receiptNumber + "?\n\nThis will cancel the transaction, mark it as voided in all sales reports, and automatically add the items back into inventory stock. This action cannot be undone.");
     }
 
+    function confirmVoidReceiptHome(form, receiptNumber) {
+        const reason = prompt("Enter the reason for voiding Receipt #" + receiptNumber + ":");
+        if (!reason || !reason.trim()) {
+            alert("Void reason is required.");
+            return false;
+        }
+
+        let input = form.querySelector('input[name="void_reason"]');
+        if (!input) {
+            input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'void_reason';
+            form.appendChild(input);
+        }
+        input.value = reason.trim();
+
+        return confirm("Warning: This will cancel the transaction, mark it as voided in reports, and restore sold items to inventory. Continue?");
+    }
+
     function addToCartWithQty(itemId) {
         const qty = document.getElementById('qty-input-' + itemId).value;
         if (qty < 1) return;
@@ -504,6 +553,53 @@ input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
+}
+
+.shift-bar,
+.shift-start-form {
+    align-items: end;
+    display: grid;
+    gap: 0.85rem;
+}
+
+.shift-bar {
+    grid-template-columns: 1fr auto;
+}
+
+.shift-bar strong {
+    color: #174a21;
+    display: inline-block;
+    font-weight: 900;
+    margin: 0 0.45rem;
+}
+
+.shift-inline-form,
+.shift-start-form {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.shift-inline-form {
+    grid-template-columns: minmax(180px, 1fr) auto;
+}
+
+.shift-start-form {
+    grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr) auto;
+}
+
+@media (max-width: 900px) {
+    .shift-bar,
+    .shift-inline-form,
+    .shift-start-form {
+        display: block;
+    }
+
+    .shift-inline-form input,
+    .shift-inline-form .btn,
+    .shift-start-form .filter-field,
+    .shift-start-form .btn {
+        margin-top: 0.75rem;
+    }
 }
 </style>
 

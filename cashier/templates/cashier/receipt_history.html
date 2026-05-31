@@ -37,7 +37,12 @@
             </div>
             <div class="filter-field">
                 <label for="cashier">Cashier</label>
-                <input id="cashier" type="text" name="cashier" value="{{ cashier_filter }}" placeholder="Cashier name">
+                <select id="cashier" name="cashier">
+                    <option value="">All Cashiers</option>
+                    {% for cashier_name in cashier_names %}
+                        <option value="{{ cashier_name }}" {% if cashier_filter == cashier_name %}selected{% endif %}>{{ cashier_name }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <div class="filter-field">
                 <label for="payment_method">Payment</label>
@@ -45,6 +50,23 @@
                     <option value="">All Methods</option>
                     {% for method in payment_methods %}
                         <option value="{{ method }}" {% if payment_filter == method %}selected{% endif %}>{{ method }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="status">Status</label>
+                <select id="status" name="status">
+                    <option value="">All Statuses</option>
+                    <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                    <option value="voided" {% if status_filter == 'voided' %}selected{% endif %}>Voided</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="shift">Shift</label>
+                <select id="shift" name="shift">
+                    <option value="">All Shifts</option>
+                    {% for shift in shifts %}
+                        <option value="{{ shift.id }}" {% if shift_filter == shift.id|stringformat:"s" %}selected{% endif %}>{{ shift.cashier_name }} - {{ shift.started_at|date:"M d, h:i A" }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -78,10 +100,12 @@
                     <th>Sale Date</th>
                     <th>Cashier</th>
                     <th>Payment</th>
+                    <th>Shift</th>
                     <th>Cash Received</th>
                     <th>Change</th>
                     <th>Total Amount</th>
                     <th>Status</th>
+                    <th>Void Reason</th>
                     <th class="screen-only">Actions</th>
                 </tr>
             </thead>
@@ -93,6 +117,14 @@
                         <td>{{ receipt.created_at|date:"M d, Y h:i A" }}</td>
                         <td>{{ receipt.cashier_name }}</td>
                         <td>{{ receipt.payment_method }}</td>
+                        <td>
+                            {% if receipt.sale.shift %}
+                                {{ receipt.sale.shift.cashier_name }}<br>
+                                <span class="muted">{{ receipt.sale.shift.started_at|date:"M d, h:i A" }}</span>
+                            {% else %}
+                                <span class="muted">No shift</span>
+                            {% endif %}
+                        </td>
                         <td>PHP {{ receipt.cash_received|floatformat:2 }}</td>
                         <td>PHP {{ receipt.change_amount|floatformat:2 }}</td>
                         <td class="strong-value">PHP {{ receipt.sale.total_amount|floatformat:2 }}</td>
@@ -103,12 +135,13 @@
                                 <span class="badge badge-ok">Completed</span>
                             {% endif %}
                         </td>
+                        <td>{{ receipt.sale.void_reason|default:"-" }}</td>
                         <td class="screen-only">
                             <div style="display: flex; gap: 8px; align-items: center;">
                                 <a class="btn btn-primary btn-compact" href="{% url 'generate_receipt' receipt.sale.id %}" target="_blank">View</a>
                                 {% if user.is_staff or user.is_superuser %}
                                     {% if not receipt.sale.is_voided %}
-                                        <form action="{% url 'void_receipt' receipt.id %}" method="post" style="display: inline;" onsubmit="return confirmVoidReceipt('{{ receipt.receipt_number }}')">
+                                        <form action="{% url 'void_receipt' receipt.id %}" method="post" style="display: inline;" onsubmit="return confirmVoidReceipt(this, '{{ receipt.receipt_number }}')">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-danger btn-compact" style="margin-left: 0; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem;">Void</button>
                                         </form>
@@ -119,7 +152,7 @@
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="10" class="empty-state">No receipts found.</td>
+                        <td colspan="12" class="empty-state">No receipts found.</td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -161,7 +194,7 @@
         align-items: end;
         display: grid;
         gap: 0.85rem;
-        grid-template-columns: repeat(7, minmax(120px, 1fr)) auto auto;
+        grid-template-columns: repeat(9, minmax(120px, 1fr)) auto auto;
     }
 
     /* Voided Row Styling */
@@ -246,6 +279,24 @@
 <script>
     function confirmVoidReceipt(receiptNumber) {
         return confirm("🛑 Warning: Are you sure you want to VOID Receipt #" + receiptNumber + "?\n\nThis will cancel the transaction, mark it as voided in all sales reports, and automatically add the items back into inventory stock. This action cannot be undone.");
+    }
+    function confirmVoidReceipt(form, receiptNumber) {
+        const reason = prompt("Enter the reason for voiding Receipt #" + receiptNumber + ":");
+        if (!reason || !reason.trim()) {
+            alert("Void reason is required.");
+            return false;
+        }
+
+        let input = form.querySelector('input[name="void_reason"]');
+        if (!input) {
+            input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'void_reason';
+            form.appendChild(input);
+        }
+        input.value = reason.trim();
+
+        return confirm("Warning: This will cancel the transaction, mark it as voided in reports, and restore sold items to inventory. Continue?");
     }
 </script>
 {% endblock %}
