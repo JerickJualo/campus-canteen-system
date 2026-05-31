@@ -11,8 +11,15 @@
             <p class="sales-report-subtitle">{{ report_date|date:"l, F j, Y" }}</p>
         </div>
         <div class="sales-report-actions">
-            <a class="btn btn-muted" href="{% url 'cashier' %}">Back to Cashier</a>
             <a class="btn btn-muted" href="{% url 'daily_report_history' %}">Daily History</a>
+            {% if user.is_staff or user.is_superuser %}
+                {% if sales.count > 0 %}
+                <form action="{% url 'void_daily_report' %}" method="post" style="display: inline;" onsubmit="return confirmVoidDaily()">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger" style="margin-left: 0;">Void Today's Sales</button>
+                </form>
+                {% endif %}
+            {% endif %}
             <button type="button" class="btn btn-primary" onclick="window.print()">Print Report</button>
         </div>
     </div>
@@ -200,19 +207,27 @@
                     <tr>
                         <th>Transaction ID</th>
                         <th>Total Amount</th>
+                        <th>Status</th>
                         <th>Time</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for sale in sales %}
-                        <tr>
+                        <tr {% if sale.is_voided %}style="text-decoration: line-through; opacity: 0.6; background-color: rgba(241, 245, 249, 0.6);"{% endif %}>
                             <td>#{{ sale.id }}</td>
                             <td>PHP {{ sale.total_amount|floatformat:2 }}</td>
+                            <td>
+                                {% if sale.is_voided %}
+                                    <span class="badge badge-out" style="padding: 0.15rem 0.4rem; font-size: 0.75rem;">Voided</span>
+                                {% else %}
+                                    <span class="badge badge-ok" style="padding: 0.15rem 0.4rem; font-size: 0.75rem;">Active</span>
+                                {% endif %}
+                            </td>
                             <td>{{ sale.created_at|localtime|date:"g:i A" }}</td>
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="3" class="empty-state">No transactions today.</td>
+                            <td colspan="4" class="empty-state">No transactions today.</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -230,6 +245,10 @@
             }, 100);
         }
     });
+
+    function confirmVoidDaily() {
+        return confirm("⚠️ CRITICAL WARNING: You are about to VOID all active sales recorded for today.\n\nThis will mark all today's transactions as voided, exclude them from revenue reports, and restore all sold items back to inventory stock. This action cannot be undone.\n\nAre you sure you want to proceed?");
+    }
 </script>
 
 <style>

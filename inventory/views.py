@@ -8,6 +8,7 @@ from django import forms
 from django.utils import timezone
 
 from .models import CATEGORY_CHOICES, Category, InventoryItem, RestockHistory
+from accounts.decorators import admin_required
 
 
 def get_restock_user(request):
@@ -44,6 +45,7 @@ def ensure_default_categories():
 
 
 # --- Inventory Dashboard View ---
+@admin_required
 def inventory_dashboard(request):
     items = InventoryItem.objects.all()
     total_items = items.count()
@@ -67,6 +69,7 @@ def inventory_dashboard(request):
     return render(request, 'inventory/inventory_dashboard.html', context)
 
 # --- Multi-item Restock View and AJAX Search ---
+@admin_required
 def multi_item_restock(request):
     items = InventoryItem.objects.all().order_by('item_name')
     if request.method == 'POST':
@@ -105,6 +108,7 @@ def multi_item_restock(request):
         })
     return render(request, 'inventory/multi_item_restock.html', {'items': items})
 
+@admin_required
 def inventory_search(request):
     q = request.GET.get('q', '').strip()
     items = InventoryItem.objects.all().order_by('item_name')
@@ -123,6 +127,7 @@ def inventory_search(request):
     return JsonResponse({'results': results})
 
 
+@admin_required
 def inventory_history(request):
     history = RestockHistory.objects.select_related('inventory_item', 'restocked_by')
     search_query = request.GET.get('search', '').strip()
@@ -195,6 +200,7 @@ def get_inventory_summary():
     }
 
 
+@admin_required
 def inventory_list(request):
     items, filter_context = get_filtered_inventory_items(request)
     categories = get_category_names()
@@ -208,6 +214,7 @@ def inventory_list(request):
     })
 
 
+@admin_required
 def inventory_print_checklist(request):
     items, filter_context = get_filtered_inventory_items(request)
     summary = get_inventory_summary()
@@ -240,6 +247,7 @@ class RestockItemForm(forms.Form):
     )
 
 # Restock Inventory Item View
+@admin_required
 def restock_inventory_item(request, pk):
     item = get_object_or_404(InventoryItem, pk=pk)
     if request.method == 'POST':
@@ -359,6 +367,7 @@ class InventoryItemForm(forms.ModelForm):
         return item
 
 # Add Inventory Item View
+@admin_required
 def add_inventory_item(request):
     if request.method == 'POST':
         form = InventoryItemForm(request.POST)
@@ -373,6 +382,7 @@ def add_inventory_item(request):
 
 
 # Edit Inventory Item View
+@admin_required
 def edit_inventory_item(request, pk):
     item = get_object_or_404(InventoryItem, pk=pk)
     if request.method == 'POST':
@@ -388,6 +398,7 @@ def edit_inventory_item(request, pk):
 
 
 # Delete Inventory Item View
+@admin_required
 def delete_inventory_item(request, pk):
     item = get_object_or_404(InventoryItem, pk=pk)
     if request.method == 'POST':

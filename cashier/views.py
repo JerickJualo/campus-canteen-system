@@ -1,23 +1,27 @@
-from collections import _OrderedDictItemsView, OrderedDict
+from collections import OrderedDict
 from datetime import timedelta, datetime, date
 from decimal import Decimal, InvalidOperation
 import os
 
-from config import settings
-from .models import Order   
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from cashier.models import Sale, SaleItem, Receipt
-from inventory.models import InventoryItem
 from django.utils import timezone
 from django.utils.timezone import now
 from django.db import transaction
 from django.db.models import Q, Sum, F
 from django import forms
 import django.db.models as models
-from django.http import JsonResponse
+from django.core.paginator import Paginator
+from django.contrib.auth.decorators import login_required
 
+from accounts.decorators import admin_required, cashier_required
+from cashier.models import Sale, SaleItem, Receipt
+from inventory.models import InventoryItem
+from .models import Order   
+
+
+@cashier_required
 def cashier_home(request):
     search_query = request.GET.get('search', '').strip()
     items = InventoryItem.objects.filter(quantity_in_stock__gt=0)
@@ -43,6 +47,7 @@ def cashier_home(request):
     })
 
 
+@cashier_required
 def cashier_search(request):
     query = request.GET.get('q', '').strip()
 
@@ -65,6 +70,7 @@ def cashier_search(request):
     return JsonResponse({'results': results})
 
 
+@cashier_required
 def add_to_cart(request, item_id):
     item = get_object_or_404(InventoryItem, id=item_id)
     cart = request.session.get('cart', {})
@@ -78,19 +84,26 @@ def add_to_cart(request, item_id):
     if qty < 1:
         qty = 1
 
-    if item_id in cart:
-        new_qty = cart[item_id]['quantity'] + qty
-
-        if new_qty <= item.quantity_in_stock:
-            cart[item_id]['quantity'] = new_qty
+    # Check if we should set the exact amount or add to it
+    if request.GET.get('set_exact') == '1':
+        new_qty = qty
+    else:
+        if item_id in cart:
+            new_qty = cart[item_id]['quantity'] + qty
         else:
-            cart[item_id]['quantity'] = item.quantity_in_stock
-        
+            new_qty = qty
+
+    if new_qty <= item.quantity_in_stock:
+        cart[item_id] = {
+            'name': item.item_name,
+            'price': float(item.unit_price),
+            'quantity': new_qty
+        }
     else:
         cart[item_id] = {
             'name': item.item_name,
             'price': float(item.unit_price),
-            'quantity': min(qty, item.quantity_in_stock)
+            'quantity': item.quantity_in_stock
         }
 
     request.session['cart'] = cart
@@ -98,6 +111,7 @@ def add_to_cart(request, item_id):
     return redirect(f'/cashier/?search={search_query}')
 
 
+@cashier_required
 def remove_from_cart(request, item_id):
     cart = request.session.get('cart', {})
     item_id = str(item_id)
@@ -110,6 +124,7 @@ def remove_from_cart(request, item_id):
     return redirect(f'/cashier/?search={search_query}')
 
 
+@cashier_required
 def increase_quantity(request, item_id):
     cart = request.session.get('cart', {})
     item = get_object_or_404(InventoryItem, id=item_id)
@@ -124,6 +139,7 @@ def increase_quantity(request, item_id):
     return redirect(f'/cashier/?search={search_query}')
 
 
+@cashier_required
 def decrease_quantity(request, item_id):
     cart = request.session.get('cart', {})
     item_id = str(item_id)
@@ -139,6 +155,7 @@ def decrease_quantity(request, item_id):
     return redirect(f'/cashier/?search={search_query}')
 
 
+@cashier_required
 def checkout(request):
     cart = request.session.get('cart', {})
     available_items = InventoryItem.objects.filter(quantity_in_stock__gt=0)
@@ -268,11 +285,8 @@ def checkout(request):
 
     return redirect('cashier')
 
-# ---------------------------------------------------------------------------
-# Receipt History
-# ---------------------------------------------------------------------------
-from django.core.paginator import Paginator
 
+@admin_required
 def receipt_history(request):
     """Display a paginated list of all receipts.
     Shows receipt number, sale date, total amount, and a link to view the
@@ -317,7 +331,7 @@ def receipt_history(request):
         'payment_method',
         flat=True,
     ).distinct().order_by('payment_method')
-    # Pagination – 20 receipts per page
+    # Pagination
     paginator = Paginator(receipt_qs, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -337,19 +351,40 @@ def receipt_history(request):
     })
 
 
-def delete_receipt(request, receipt_id):
-    """Delete a receipt and its associated sale (cascade deletes sale items)."""
+@admin_required
+def void_receipt(request, receipt_id):
+    """Void a receipt and its associated sale, and restore quantities of the items to stock."""
     if request.method == 'POST':
         receipt = get_object_or_404(Receipt, id=receipt_id)
-        receipt_number = receipt.receipt_number
-        # Deleting the sale cascades to SaleItem; deleting receipt is explicit
         sale = receipt.sale
-        receipt.delete()
-        sale.delete()
-        messages.success(request, f'Receipt #{receipt_number} has been deleted.')
-    return redirect('cashier')
+        
+        if sale.is_voided:
+            messages.warning(request, f'Receipt #{receipt.receipt_number} is already voided.')
+            return redirect('receipt_history')
+            
+        with transaction.atomic():
+            sale.is_voided = True
+            sale.save(update_fields=['is_voided'])
+            
+            # Revert stock
+            reverted_items = []
+            for sale_item in sale.saleitem_set.all():
+                try:
+                    inventory_item = InventoryItem.objects.select_for_update().get(item_name=sale_item.item_name)
+                    inventory_item.quantity_in_stock += sale_item.quantity
+                    inventory_item.save()
+                    reverted_items.append(f"{sale_item.item_name} (+{sale_item.quantity})")
+                except InventoryItem.DoesNotExist:
+                    pass
+            
+            messages.success(
+                request, 
+                f'Receipt #{receipt.receipt_number} has been voided. Restored stock: {", ".join(reverted_items)}.'
+            )
+    return redirect('receipt_history')
 
 
+@cashier_required
 def complete_transaction(request):
     if request.method == "POST":
         cart = request.session.get('cart', [])
@@ -361,7 +396,6 @@ def complete_transaction(request):
             created_at=timezone.now()
         )
 
-        # SAVE ITEMS
         for item in cart:
             SaleItem.objects.create(
                 sale=sale,
@@ -370,17 +404,13 @@ def complete_transaction(request):
                 price=item['price']
             )
 
-        # CLEAR CART
         request.session['cart'] = []
 
         return redirect('cashier')
-    
 
 
+@admin_required
 def daily_report(request, year=None, month=None, day=None):
-    from django.db.models import Q, F
-    from collections import defaultdict
-
     if year and month and day:
         report_date = date(year, month, day)
     else:
@@ -390,28 +420,29 @@ def daily_report(request, year=None, month=None, day=None):
         created_at__date=report_date
     ).order_by('-created_at')
 
-    total = sales.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    active_sales = sales.filter(is_voided=False)
+    total = active_sales.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     
-    # Get all sale items for the report date
+    # Get all sale items for the report date (excluding voided sales)
     sale_items = SaleItem.objects.filter(
-        sale__created_at__date=report_date
+        sale__created_at__date=report_date,
+        sale__is_voided=False
     )
     
     # Total items sold (sum of quantities)
     total_items_sold = sale_items.aggregate(Sum('quantity'))['quantity__sum'] or 0
     
     # Best-selling items for the day
-    from django.db.models import Sum as DjangoSum
     best_sellers = sale_items.values('item_name').annotate(
-        total_qty=DjangoSum('quantity'),
-        total_revenue=DjangoSum(F('quantity') * F('price'), output_field=models.DecimalField())
+        total_qty=Sum('quantity'),
+        total_revenue=Sum(F('quantity') * F('price'), output_field=models.DecimalField())
     ).order_by('-total_qty')[:5]
     
     # All items sold today with quantities
     items_sold = sale_items.values('item_name').annotate(
-        total_qty=DjangoSum('quantity'),
+        total_qty=Sum('quantity'),
         unit_price=F('price'),
-        total_revenue=DjangoSum(F('quantity') * F('price'), output_field=models.DecimalField())
+        total_revenue=Sum(F('quantity') * F('price'), output_field=models.DecimalField())
     ).order_by('-total_qty')
     
     # Low-stock items
@@ -426,21 +457,20 @@ def daily_report(request, year=None, month=None, day=None):
     ).values('item_name', 'quantity_in_stock', 'unit_price').order_by('-quantity_in_stock')
 
     return render(request, 'report/daily.html', {
-        'sales': sales,
+        'sales': sales, # keep all sales for audit logs
         'total': total,
         'report_date': report_date,
-        'transaction_count': sales.count(),
+        'transaction_count': active_sales.count(),
         'total_items_sold': total_items_sold,
         'best_sellers': best_sellers,
         'items_sold': items_sold,
         'low_stock_items': low_stock_items,
         'fast_moving_items': fast_moving_items,
     })
-    
-def monthly_report(request, year=None, month=None):
-    from django.db.models import Sum as DjangoSum, Count
-    from collections import defaultdict
 
+
+@admin_required
+def monthly_report(request, year=None, month=None):
     if year and month:
         report_year = int(year)
         report_month = int(month)
@@ -454,12 +484,14 @@ def monthly_report(request, year=None, month=None):
         created_at__month=report_month
     ).order_by('-created_at')
 
-    total = sales.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    active_sales = sales.filter(is_voided=False)
+    total = active_sales.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     
     # Get all sale items for the month
     sale_items = SaleItem.objects.filter(
         sale__created_at__year=report_year,
-        sale__created_at__month=report_month
+        sale__created_at__month=report_month,
+        sale__is_voided=False
     )
     
     # Total items sold for the month
@@ -467,21 +499,21 @@ def monthly_report(request, year=None, month=None):
     
     # Top-selling items of the month
     best_sellers = sale_items.values('item_name').annotate(
-        total_qty=DjangoSum('quantity'),
-        total_revenue=DjangoSum(F('quantity') * F('price'), output_field=models.DecimalField())
+        total_qty=Sum('quantity'),
+        total_revenue=Sum(F('quantity') * F('price'), output_field=models.DecimalField())
     ).order_by('-total_qty')[:5]
     
     # Lowest-selling items
     lowest_sellers = sale_items.values('item_name').annotate(
-        total_qty=DjangoSum('quantity'),
-        total_revenue=DjangoSum(F('quantity') * F('price'), output_field=models.DecimalField())
+        total_qty=Sum('quantity'),
+        total_revenue=Sum(F('quantity') * F('price'), output_field=models.DecimalField())
     ).order_by('total_qty')[:5]
     
     # Daily sales summary
     from inventory.models import RestockHistory
     daily_sales = sale_items.values('sale__created_at__date').annotate(
-        daily_qty=DjangoSum('quantity'),
-        daily_revenue=DjangoSum(F('quantity') * F('price'), output_field=models.DecimalField())
+        daily_qty=Sum('quantity'),
+        daily_revenue=Sum(F('quantity') * F('price'), output_field=models.DecimalField())
     ).order_by('-sale__created_at__date')
     
     # Total restocks made during the month
@@ -494,19 +526,19 @@ def monthly_report(request, year=None, month=None):
     
     # Items that frequently ran low or out of stock (from restock history)
     low_stock_items = restocks.values('inventory_item__item_name').annotate(
-        restock_count=Count('id'),
-        total_qty_added=DjangoSum('quantity_added')
+        restock_count=models.Count('id'),
+        total_qty_added=Sum('quantity_added')
     ).order_by('-restock_count')[:5]
 
     month_name = datetime(report_year, report_month, 1).strftime('%B')
     
     return render(request, 'report/monthly.html', {
-        'sales': sales,
+        'sales': sales, # keep all sales for audit logs
         'total': total,
         'month': report_month,
         'year': report_year,
         'month_name': month_name,
-        'transaction_count': sales.count(),
+        'transaction_count': active_sales.count(),
         'total_items_sold': total_items_sold,
         'best_sellers': best_sellers,
         'lowest_sellers': lowest_sellers,
@@ -517,52 +549,67 @@ def monthly_report(request, year=None, month=None):
     })
 
 
-def delete_daily_report(request):
+@admin_required
+def void_daily_report(request):
+    """Void all active sales records for today and restore stock."""
     if request.method == 'POST':
         today = now().date()
-        # Delete all sales for today
-        sales_to_delete = Sale.objects.filter(created_at__date=today)
-        count = sales_to_delete.count()
-        sales_to_delete.delete()
+        sales_to_void = Sale.objects.filter(created_at__date=today, is_voided=False)
+        count = 0
+        with transaction.atomic():
+            for sale in sales_to_void:
+                sale.is_voided = True
+                sale.save(update_fields=['is_voided'])
+                for sale_item in sale.saleitem_set.all():
+                    try:
+                        inventory_item = InventoryItem.objects.select_for_update().get(item_name=sale_item.item_name)
+                        inventory_item.quantity_in_stock += sale_item.quantity
+                        inventory_item.save()
+                    except InventoryItem.DoesNotExist:
+                        pass
+                count += 1
         
-        # Also delete related sale items (cascade should handle this, but let's be explicit)
-        SaleItem.objects.filter(sale__created_at__date=today).delete()
-        
-        messages.success(request, f'Successfully deleted {count} sales records for today.')
-        return redirect('daily_report')
+        messages.success(request, f'Successfully voided {count} sales records for today and restored stock.')
     return redirect('daily_report')
 
 
-def delete_monthly_report(request):
+@admin_required
+def void_monthly_report(request):
+    """Void all active sales records for the current month and restore stock."""
     if request.method == 'POST':
         today = now()
         current_month = today.month
         current_year = today.year
         
-        # Delete all sales for the current month
-        sales_to_delete = Sale.objects.filter(
+        sales_to_void = Sale.objects.filter(
             created_at__year=current_year,
-            created_at__month=current_month
+            created_at__month=current_month,
+            is_voided=False
         )
-        count = sales_to_delete.count()
-        sales_to_delete.delete()
+        count = 0
+        with transaction.atomic():
+            for sale in sales_to_void:
+                sale.is_voided = True
+                sale.save(update_fields=['is_voided'])
+                for sale_item in sale.saleitem_set.all():
+                    try:
+                        inventory_item = InventoryItem.objects.select_for_update().get(item_name=sale_item.item_name)
+                        inventory_item.quantity_in_stock += sale_item.quantity
+                        inventory_item.save()
+                    except InventoryItem.DoesNotExist:
+                        pass
+                count += 1
         
-        # Also delete related sale items (cascade should handle this, but let's be explicit)
-        SaleItem.objects.filter(
-            sale__created_at__year=current_year,
-            sale__created_at__month=current_month
-        ).delete()
-        
-        messages.success(request, f'Successfully deleted {count} sales records for {today.strftime("%B %Y")}.')
-        return redirect('monthly_report')
+        messages.success(request, f'Successfully voided {count} sales records for {today.strftime("%B %Y")} and restored stock.')
     return redirect('monthly_report')
 
 
+@admin_required
 def daily_report_history(request):
     from django.db.models.functions import TruncDate
     from django.db.models import Count
 
-    daily_history_qs = Sale.objects.annotate(
+    daily_history_qs = Sale.objects.filter(is_voided=False).annotate(
         report_date=TruncDate('created_at')
     ).values('report_date').annotate(
         transaction_count=Count('id'),
@@ -576,11 +623,12 @@ def daily_report_history(request):
     })
 
 
+@admin_required
 def monthly_report_history(request):
     from django.db.models.functions import TruncMonth
     from django.db.models import Count
 
-    monthly_history_qs = Sale.objects.annotate(
+    monthly_history_qs = Sale.objects.filter(is_voided=False).annotate(
         report_month=TruncMonth('created_at')
     ).values('report_month').annotate(
         transaction_count=Count('id'),
@@ -594,18 +642,21 @@ def monthly_report_history(request):
     })
 
 
+@admin_required
 def report_history(request):
     from django.db.models.functions import TruncDate, TruncMonth
     from django.db.models import Count
 
-    daily_history = Sale.objects.annotate(
+    active_sales = Sale.objects.filter(is_voided=False)
+
+    daily_history = active_sales.annotate(
         report_date=TruncDate('created_at')
     ).values('report_date').annotate(
         transaction_count=Count('id'),
         total_revenue=Sum('total_amount')
     ).order_by('-report_date')[:30]
 
-    monthly_history = Sale.objects.annotate(
+    monthly_history = active_sales.annotate(
         report_month=TruncMonth('created_at')
     ).values('report_month').annotate(
         transaction_count=Count('id'),
@@ -618,6 +669,7 @@ def report_history(request):
     })
 
 
+@login_required
 def generate_receipt(request, sale_id):
     sale = get_object_or_404(Sale, id=sale_id)
     
@@ -650,3 +702,49 @@ def generate_receipt(request, sale_id):
     }
     
     return render(request, 'cashier/receipt.html', context)
+
+
+@login_required
+def monitor_dashboard(request):
+    """Unified, read-only Monitor Dashboard showcasing Cashier stock levels and Admin metrics side-by-side."""
+    # Restrict Cashiers from accessing
+    role = 'cashier'
+    if hasattr(request.user, 'profile'):
+        role = request.user.profile.role
+        
+    if role == 'cashier' and not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, "Permission Denied: Cashiers cannot access the Monitor Desk.")
+        return redirect('cashier')
+
+    # 1. Cashier Side Data
+    items = InventoryItem.objects.all().order_by('item_name')
+
+    # 2. Admin Side Data
+    from inventory.models import RestockHistory
+    total_items = InventoryItem.objects.count()
+    low_stock_count = InventoryItem.objects.filter(
+        quantity_in_stock__lte=F('minimum_stock_level'), 
+        quantity_in_stock__gt=0
+    ).count()
+    out_of_stock_count = InventoryItem.objects.filter(quantity_in_stock=0).count()
+
+    today = now().date()
+    today_sales = Sale.objects.filter(created_at__date=today, is_voided=False)
+    today_revenue = today_sales.aggregate(Sum('total_amount'))['total_amount__sum'] or Decimal('0.00')
+    transaction_count = today_sales.count()
+
+    recent_receipts = Receipt.objects.select_related('sale').order_by('-created_at')[:10]
+    recent_restocks = RestockHistory.objects.select_related('inventory_item').order_by('-created_at')[:5]
+
+    return render(request, 'report/monitor_dashboard.html', {
+        'items': items,
+        'total_items': total_items,
+        'low_stock_count': low_stock_count,
+        'out_of_stock_count': out_of_stock_count,
+        'today_revenue': today_revenue,
+        'transaction_count': transaction_count,
+        'recent_receipts': recent_receipts,
+        'recent_restocks': recent_restocks,
+        'report_date': today,
+    })
+

@@ -29,6 +29,7 @@ class TransactionItem(models.Model):
 class Sale(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    is_voided = models.BooleanField(default=False)
 
 class SaleItem(models.Model):
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE)

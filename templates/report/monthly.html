@@ -11,8 +11,15 @@
             <p class="sales-report-subtitle">{{ month_name }} {{ year }}</p>
         </div>
         <div class="sales-report-actions">
-            <a class="btn btn-muted" href="{% url 'cashier' %}">Back to Cashier</a>
             <a class="btn btn-muted" href="{% url 'monthly_report_history' %}">Monthly History</a>
+            {% if user.is_staff or user.is_superuser %}
+                {% if sales.count > 0 %}
+                <form action="{% url 'void_monthly_report' %}" method="post" style="display: inline;" onsubmit="return confirmVoidMonthly()">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger" style="margin-left: 0;">Void Month's Sales</button>
+                </form>
+                {% endif %}
+            {% endif %}
             <button type="button" class="btn btn-primary" onclick="window.print()">Print Report</button>
         </div>
     </div>
@@ -218,19 +225,27 @@
                     <tr>
                         <th>Transaction ID</th>
                         <th>Total Amount</th>
+                        <th>Status</th>
                         <th>Date</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for sale in sales %}
-                        <tr>
+                        <tr {% if sale.is_voided %}style="text-decoration: line-through; opacity: 0.6; background-color: rgba(241, 245, 249, 0.6);"{% endif %}>
                             <td>#{{ sale.id }}</td>
                             <td>PHP {{ sale.total_amount|floatformat:2 }}</td>
+                            <td>
+                                {% if sale.is_voided %}
+                                    <span class="badge badge-out" style="padding: 0.15rem 0.4rem; font-size: 0.75rem;">Voided</span>
+                                {% else %}
+                                    <span class="badge badge-ok" style="padding: 0.15rem 0.4rem; font-size: 0.75rem;">Active</span>
+                                {% endif %}
+                            </td>
                             <td>{{ sale.created_at|localtime|date:"M d, Y g:i A" }}</td>
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="3" class="empty-state">No transactions this month.</td>
+                            <td colspan="4" class="empty-state">No transactions this month.</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -248,6 +263,10 @@
             }, 100);
         }
     });
+
+    function confirmVoidMonthly() {
+        return confirm("⚠️ CRITICAL WARNING: You are about to VOID all active sales recorded for this month.\n\nThis will mark all active transactions in this month as voided, exclude them from revenue reports, and restore all sold items back to inventory stock. This action cannot be undone.\n\nAre you sure you want to proceed?");
+    }
 </script>
 
 <style>

@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% block content %}
+{% include 'inventory/_inventory_styles.html' %}
+
+<div class="monitor-page">
+    <!-- Header -->
+    <div class="inventory-header">
+        <div>
+            <p class="eyebrow">Real-Time Control Center</p>
+            <h2 class="inventory-title">Unified Canteen Monitor</h2>
+            <p class="inventory-subtitle">Observing cashier counters and administrative operations from a single screen. <span class="badge badge-low" style="margin-left: 8px; text-transform: uppercase; font-size: 0.7rem; font-weight: 800;">View-Only Mode</span></p>
+        </div>
+    </div>
+
+    <!-- Live Unified Workspace -->
+    <div class="monitor-grid">
+        <!-- Left Column: Cashier live counter and cart mockup -->
+        <div class="monitor-column cashier-column">
+            <div class="panel">
+                <div class="panel-header" style="background: linear-gradient(135deg, #14532d 0%, #166534 100%); color: #ffffff;">
+                    <h3 class="panel-title" style="color: #ffffff;">🛒 Cashier Counter status</h3>
+                </div>
+                
+                <div class="inventory-table-wrap" style="max-height: 480px; overflow-y: auto;">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr {% if item.quantity_in_stock == 0 %}class="out-stock-row"{% elif item.quantity_in_stock <= item.minimum_stock_level %}class="low-stock-row"{% endif %}>
+                                <td class="item-name">{{ item.item_name }}</td>
+                                <td>{{ item.category }}</td>
+                                <td class="strong-value">PHP {{ item.unit_price }}</td>
+                                <td>
+                                    <strong class="stock-count">{{ item.quantity_in_stock }}</strong>
+                                    {% if item.quantity_in_stock == 0 %}
+                                        <span class="badge badge-out" style="display: block; margin-top: 4px; font-size: 0.7rem;">Out</span>
+                                    {% elif item.quantity_in_stock <= item.minimum_stock_level %}
+                                        <span class="badge badge-low" style="display: block; margin-top: 4px; font-size: 0.7rem;">Low</span>
+                                    {% else %}
+                                        <span class="badge badge-ok" style="display: block; margin-top: 4px; font-size: 0.7rem;">Available</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="empty-state">No counter items available.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Read-only Cart Mockup -->
+            <div class="panel" style="margin-top: 1.5rem;">
+                <div class="panel-header">
+                    <h3 class="panel-title">🛍️ Active Register Cart</h3>
+                </div>
+                <div style="padding: 2rem 1.5rem; text-align: center; color: #64748b;">
+                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">🔒</div>
+                    <strong style="color: #334155; font-size: 1rem; display: block; margin-bottom: 0.25rem;">Monitor Mode Secure</strong>
+                    <span style="font-size: 0.85rem; font-weight: 500;">Checkout forms, price updates, and quantity edits are disabled in read-only status.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Admin Metrics and SalesLogs -->
+        <div class="monitor-column admin-column">
+            <!-- Metrics Summary Cards -->
+            <div class="summary-grid" style="grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="summary-card" style="min-height: 80px; padding: 1rem;">
+                    <div class="summary-label" style="font-size: 0.75rem;">Total Items</div>
+                    <div class="summary-value" style="font-size: 1.5rem;">{{ total_items }}</div>
+                </div>
+                <div class="summary-card warning" style="min-height: 80px; padding: 1rem;">
+                    <div class="summary-label" style="font-size: 0.75rem;">Low Stock Warning</div>
+                    <div class="summary-value warning" style="font-size: 1.5rem;">{{ low_stock_count }}</div>
+                </div>
+                <div class="summary-card" style="min-height: 80px; padding: 1rem;">
+                    <div class="summary-label" style="font-size: 0.75rem;">Today's Sales</div>
+                    <div class="summary-value" style="font-size: 1.5rem;">PHP {{ today_revenue|floatformat:2 }}</div>
+                </div>
+                <div class="summary-card" style="min-height: 80px; padding: 1rem;">
+                    <div class="summary-label" style="font-size: 0.75rem;">Transactions</div>
+                    <div class="summary-value" style="font-size: 1.5rem;">{{ transaction_count }}</div>
+                </div>
+            </div>
+
+            <!-- Recent Receipts audit logs -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">📋 Recent Sales Audit Trail</h3>
+                </div>
+                <div class="inventory-table-wrap" style="max-height: 280px; overflow-y: auto;">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Receipt No.</th>
+                                <th>Cashier</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in recent_receipts %}
+                            <tr {% if r.sale.is_voided %}style="text-decoration: line-through; opacity: 0.6; background-color: rgba(241, 245, 249, 0.6);"{% endif %}>
+                                <td style="font-weight: 600;">{{ r.receipt_number }}</td>
+                                <td>{{ r.cashier_name }}</td>
+                                <td class="strong-value">PHP {{ r.sale.total_amount|floatformat:2 }}</td>
+                                <td>
+                                    {% if r.sale.is_voided %}
+                                        <span class="badge badge-out" style="font-size: 0.7rem; padding: 0.15rem 0.35rem;">Voided</span>
+                                    {% else %}
+                                        <span class="badge badge-ok" style="font-size: 0.7rem; padding: 0.15rem 0.35rem;">Active</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="empty-state">No sales audited yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recent Restocks audit logs -->
+            <div class="panel" style="margin-top: 1.5rem;">
+                <div class="panel-header">
+                    <h3 class="panel-title">📦 Recent Restocking logs</h3>
+                </div>
+                <div class="inventory-table-wrap" style="max-height: 200px; overflow-y: auto;">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Added</th>
+                                <th>New Stock</th>
+                                <th>Audited By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in recent_restocks %}
+                            <tr>
+                                <td class="item-name">{{ record.inventory_item.item_name }}</td>
+                                <td class="quantity-added">+{{ record.quantity_added }}</td>
+                                <td class="stock-count">{{ record.new_quantity }}</td>
+                                <td class="muted">{{ record.restocked_by|default:"System" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="empty-state">No restocking events audited.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .monitor-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        align-items: start;
+        margin-top: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+        .monitor-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}

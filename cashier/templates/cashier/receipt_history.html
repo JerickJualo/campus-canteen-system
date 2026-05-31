@@ -81,12 +81,13 @@
                     <th>Cash Received</th>
                     <th>Change</th>
                     <th>Total Amount</th>
-                    <th class="screen-only">Details</th>
+                    <th>Status</th>
+                    <th class="screen-only">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for receipt in page_obj.object_list %}
-                    <tr>
+                    <tr class="{% if receipt.sale.is_voided %}voided-row{% endif %}">
                         <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
                         <td><strong>{{ receipt.receipt_number }}</strong></td>
                         <td>{{ receipt.created_at|date:"M d, Y h:i A" }}</td>
@@ -95,13 +96,30 @@
                         <td>PHP {{ receipt.cash_received|floatformat:2 }}</td>
                         <td>PHP {{ receipt.change_amount|floatformat:2 }}</td>
                         <td class="strong-value">PHP {{ receipt.sale.total_amount|floatformat:2 }}</td>
+                        <td>
+                            {% if receipt.sale.is_voided %}
+                                <span class="badge badge-out">Voided</span>
+                            {% else %}
+                                <span class="badge badge-ok">Completed</span>
+                            {% endif %}
+                        </td>
                         <td class="screen-only">
-                            <a class="btn btn-primary btn-compact" href="{% url 'generate_receipt' receipt.sale.id %}">View</a>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <a class="btn btn-primary btn-compact" href="{% url 'generate_receipt' receipt.sale.id %}" target="_blank">View</a>
+                                {% if user.is_staff or user.is_superuser %}
+                                    {% if not receipt.sale.is_voided %}
+                                        <form action="{% url 'void_receipt' receipt.id %}" method="post" style="display: inline;" onsubmit="return confirmVoidReceipt('{{ receipt.receipt_number }}')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-danger btn-compact" style="margin-left: 0; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem;">Void</button>
+                                        </form>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="9" class="empty-state">No receipts found.</td>
+                        <td colspan="10" class="empty-state">No receipts found.</td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -144,6 +162,16 @@
         display: grid;
         gap: 0.85rem;
         grid-template-columns: repeat(7, minmax(120px, 1fr)) auto auto;
+    }
+
+    /* Voided Row Styling */
+    .voided-row td:not(.screen-only) {
+        text-decoration: line-through;
+        color: #94a3b8;
+    }
+    
+    .voided-row {
+        background-color: rgba(241, 245, 249, 0.6) !important;
     }
 
     @media (max-width: 900px) {
@@ -214,4 +242,10 @@
         }
     }
 </style>
+
+<script>
+    function confirmVoidReceipt(receiptNumber) {
+        return confirm("🛑 Warning: Are you sure you want to VOID Receipt #" + receiptNumber + "?\n\nThis will cancel the transaction, mark it as voided in all sales reports, and automatically add the items back into inventory stock. This action cannot be undone.");
+    }
+</script>
 {% endblock %}

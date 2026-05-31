@@ -9,9 +9,7 @@
             </p>
         </div>
 
-        <div class="inventory-actions">
-            <a href="{% url 'inventory_dashboard' %}" class="btn btn-muted">Inventory</a>
-            </div>
+
     </div>
 
     <div class="filter-panel" id="search-section">
@@ -58,10 +56,9 @@
     </td>
 
     <td>
-        <div style="display: flex; gap: 8px;">
-            <a href="{% url 'add_to_cart' item.id %}?search={{ request.GET.search }}" class="btn btn-success">+</a>
-
-            <a href="{% url 'decrease_quantity' item.id %}?search={{ request.GET.search }}" class="btn btn-danger">−</a>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="number" id="qty-input-{{ item.id }}" value="1" min="1" max="{{ item.quantity_in_stock }}" class="table-input" style="width: 70px; padding: 0.35rem 0.5rem; text-align: center; border-radius: 6px; border: 2px solid #82927e; font-weight: 700;">
+            <button type="button" class="btn btn-success" style="font-size: 0.85rem; padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 800;" onclick="addToCartWithQty('{{ item.id }}')">Add</button>
         </div>
     </td>
     </tr>
@@ -96,11 +93,7 @@
                 <td>{{ item.name }}</td>
                 <td>
                     <div style="display:flex; gap:6px; align-items:center; justify-content:center;">
-                        <a href="{% url 'decrease_quantity' key %}" class="btn btn-danger">−</a>
-
-                        <span style="font-weight:700;">{{ item.quantity }}</span>
-
-                        <a href="{% url 'increase_quantity' key %}" class="btn btn-success">+</a>
+                        <input type="number" id="cart-qty-input-{{ key }}" value="{{ item.quantity }}" min="1" class="table-input" style="width: 70px; padding: 0.35rem 0.5rem; text-align: center; border-radius: 6px; border: 2px solid #82927e; font-weight: 700;" onchange="updateCartQty('{{ key }}', this.value)">
                     </div>
                 </td>
                 <td>PHP {{ item.price|floatformat:2 }}</td>
@@ -236,12 +229,9 @@
         </div>
     </div>
 <div class="inventory-actions" style="margin-top: 1.5rem; padding-left: 0.25rem;">
-    <a href="{% url 'daily_report' %}" class="btn btn-primary">Daily Report</a>
-    <a href="{% url 'monthly_report' %}" class="btn btn-muted">Monthly Report</a>
-    <button type="button" class="btn btn-primary" onclick="toggleReceiptHistory()" style="margin-left: 8px;">
+    <button type="button" class="btn btn-primary" onclick="toggleReceiptHistory()">
         Receipt History
     </button>
-    <a href="{% url 'receipt_history' %}" class="btn btn-muted">Full Receipt History</a>
 </div>
 
 <!-- Receipt History Section (inline, toggled) -->
@@ -266,7 +256,7 @@
         </thead>
         <tbody>
             {% for r in recent_receipts %}
-            <tr>
+            <tr {% if r.sale.is_voided %}style="text-decoration: line-through; opacity: 0.6; background-color: rgba(241, 245, 249, 0.6);"{% endif %}>
                 <td>{{ forloop.counter }}</td>
                 <td style="font-weight: 600;">{{ r.receipt_number }}</td>
                 <td>{{ r.created_at|date:"M d, Y h:i A" }}</td>
@@ -278,13 +268,18 @@
                         onclick="showReceiptModal('{{ r.sale.id }}')">
                         View
                     </button>
-                    <form method="post" action="{% url 'delete_receipt' r.id %}" style="display:inline; margin-left:4px;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-danger btn-sm" style="font-size: 0.8rem;"
-                            onclick="return confirm('Delete receipt {{ r.receipt_number }}?');">
-                            Delete
-                        </button>
-                    </form>
+                    {% if user.is_staff or user.is_superuser %}
+                        {% if r.sale.is_voided %}
+                            <span class="badge badge-out" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; border-radius: 6px;">Voided</span>
+                        {% else %}
+                            <form method="post" action="{% url 'void_receipt' r.id %}" style="display:inline; margin-left:4px;" onsubmit="return confirmVoidReceiptHome('{{ r.receipt_number }}')">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm" style="font-size: 0.8rem; padding: 0.35rem 0.6rem; border-radius: 6px;">
+                                    Void
+                                </button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
                 </td>
             </tr>
             {% empty %}
@@ -473,6 +468,21 @@ document.addEventListener('click', function(e) {
             window.scrollTo(0, parseInt(savedPosition));
         }
     });
+
+    function confirmVoidReceiptHome(receiptNumber) {
+        return confirm("🛑 Warning: Are you sure you want to VOID Receipt #" + receiptNumber + "?\n\nThis will cancel the transaction, mark it as voided in all sales reports, and automatically add the items back into inventory stock. This action cannot be undone.");
+    }
+
+    function addToCartWithQty(itemId) {
+        const qty = document.getElementById('qty-input-' + itemId).value;
+        if (qty < 1) return;
+        window.location.href = `/cashier/add/${itemId}/?qty=${qty}&set_exact=1`;
+    }
+
+    function updateCartQty(itemId, newQty) {
+        if (newQty < 1) newQty = 1;
+        window.location.href = `/cashier/add/${itemId}/?qty=${newQty}&set_exact=1`;
+    }
 </script>
 
 <script>
