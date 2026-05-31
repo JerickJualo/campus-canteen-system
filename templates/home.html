@@ -9,8 +9,8 @@
         <p class="home-subtitle">Open the cashier counter, manage stock, or review sales activity.</p>
     </div>
 
-    <div class="home-grid" style="grid-template-columns: {% if user.is_staff or user.is_superuser or user.profile.role == 'admin' %}repeat(2, minmax(0, 1fr)){% else %}1fr{% endif %}; max-width: {% if user.is_staff or user.is_superuser or user.profile.role == 'admin' %}700px{% else %}350px{% endif %}; margin: 0 auto;">
-        {% if user.profile.role == 'cashier' %}
+    <div class="home-grid {% if is_admin %}home-grid-admin{% elif role == 'monitor' %}home-grid-monitor{% else %}home-grid-single{% endif %}">
+        {% if role == 'cashier' or is_admin %}
         <a class="home-card" href="{% url 'cashier' %}">
             <span class="home-card-label">Sales</span>
             <strong>Cashier Desk</strong>
@@ -18,15 +18,39 @@
         </a>
         {% endif %}
 
-        {% if user.profile.role == 'monitor' %}
+        {% if role == 'monitor' %}
         <a class="home-card" href="{% url 'monitor_dashboard' %}">
             <span class="home-card-label">View Only</span>
             <strong>Monitor Counter</strong>
             <span>Observe cashier counters and administrative operations from a single screen.</span>
         </a>
+
+        <a class="home-card" href="{% url 'inventory_list' %}">
+            <span class="home-card-label">Stock</span>
+            <strong>Inventory List</strong>
+            <span>View item quantities, low-stock status, categories, and prices without editing stock.</span>
+        </a>
+
+        <a class="home-card" href="{% url 'inventory_history' %}">
+            <span class="home-card-label">History</span>
+            <strong>Inventory History</strong>
+            <span>Review restock activity and item movement records in read-only mode.</span>
+        </a>
+
+        <a class="home-card" href="{% url 'daily_report' %}">
+            <span class="home-card-label">Reports</span>
+            <strong>Daily Sales</strong>
+            <span>Check today's sales totals, item breakdown, and transaction status.</span>
+        </a>
+
+        <a class="home-card" href="{% url 'monthly_report' %}">
+            <span class="home-card-label">Reports</span>
+            <strong>Monthly Sales</strong>
+            <span>Review monthly revenue, item movement, and restocking summaries.</span>
+        </a>
         {% endif %}
 
-        {% if user.is_staff or user.is_superuser or user.profile.role == 'admin' %}
+        {% if is_admin %}
         <a class="home-card" href="{% url 'inventory_dashboard' %}">
             <span class="home-card-label">Stock</span>
             <strong>Inventory</strong>
@@ -80,6 +104,22 @@
         display: grid;
         gap: 1rem;
         grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin: 0 auto;
+    }
+
+    .home-grid-admin {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        max-width: 980px;
+    }
+
+    .home-grid-single {
+        grid-template-columns: 1fr;
+        max-width: 350px;
+    }
+
+    .home-grid-monitor {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        max-width: 980px;
     }
 
     .home-card {

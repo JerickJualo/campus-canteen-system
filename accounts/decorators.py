@@ -1,6 +1,20 @@
 from django.shortcuts import redirect
 from django.contrib import messages
 
+MONITOR_VIEW_ONLY_URLS = {
+    'inventory_list',
+    'inventory_history',
+    'inventory_print_checklist',
+    'daily_report',
+    'daily_report_by_date',
+    'monthly_report',
+    'monthly_report_by_month',
+    'daily_report_history',
+    'monthly_report_history',
+    'report_history',
+}
+
+
 def admin_required(view_func):
     """
     Decorator for views that checks if the user is logged in and is an admin
@@ -18,14 +32,13 @@ def admin_required(view_func):
             role = request.user.profile.role
             
         if role == 'monitor':
-            # Block modifications (POST/PUT/DELETE)
             if request.method != 'GET':
                 messages.error(request, "Permission Denied: Monitors cannot perform modifications.")
                 return redirect('monitor_dashboard')
-            # Allow viewing of admin report details or list if we want, but since they have monitor dashboard,
-            # let's direct them to monitor dashboard for standard admin routes.
-            if request.path.startswith('/inventory/') or request.path.startswith('/cashier/reports/'):
-                messages.warning(request, "As a Monitor, you are directed to the unified monitoring counter.")
+
+            url_name = getattr(getattr(request, 'resolver_match', None), 'url_name', '')
+            if url_name not in MONITOR_VIEW_ONLY_URLS:
+                messages.warning(request, "As a Monitor, you can only view approved inventory and report pages.")
                 return redirect('monitor_dashboard')
             
         elif role != 'admin' and not (request.user.is_staff or request.user.is_superuser):
@@ -39,7 +52,7 @@ def cashier_required(view_func):
     """
     Decorator for views that checks if the user is logged in and is a cashier.
     - If user is a monitor, redirects them to monitor dashboard.
-    - If user is an admin, redirects them to inventory dashboard.
+    - Admin users are also allowed so they can operate the cashier desk when needed.
     """
     def _wrapped_view(request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -54,10 +67,6 @@ def cashier_required(view_func):
                 messages.error(request, "Permission Denied: Monitors cannot perform checkout actions.")
                 return redirect('monitor_dashboard')
             return redirect('monitor_dashboard')
-            
-        if role == 'admin' or request.user.is_staff or request.user.is_superuser:
-            messages.error(request, "Permission Denied: Administrators cannot access the Cashier counter.")
-            return redirect('inventory_dashboard')
             
         return view_func(request, *args, **kwargs)
     return _wrapped_view

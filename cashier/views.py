@@ -1,16 +1,14 @@
-from collections import OrderedDict
-from datetime import timedelta, datetime, date
+from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
 import os
 
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
 from django.utils.timezone import now
 from django.db import transaction
 from django.db.models import Q, Sum, F
-from django import forms
 import django.db.models as models
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
@@ -18,7 +16,12 @@ from django.contrib.auth.decorators import login_required
 from accounts.decorators import admin_required, cashier_required
 from cashier.models import Sale, SaleItem, Receipt
 from inventory.models import InventoryItem
-from .models import Order   
+
+
+def get_request_role(request):
+    if request.user.is_authenticated and hasattr(request.user, 'profile'):
+        return request.user.profile.role
+    return 'cashier'
 
 
 @cashier_required
@@ -252,6 +255,7 @@ def checkout(request):
 
                 SaleItem.objects.create(
                     sale=sale,
+                    inventory_item=inventory_item,
                     item_name=item['name'],
                     quantity=item['quantity'],
                     price=Decimal(str(item['price']))
@@ -369,44 +373,20 @@ def void_receipt(request, receipt_id):
             # Revert stock
             reverted_items = []
             for sale_item in sale.saleitem_set.all():
-                try:
-                    inventory_item = InventoryItem.objects.select_for_update().get(item_name=sale_item.item_name)
-                    inventory_item.quantity_in_stock += sale_item.quantity
-                    inventory_item.save()
-                    reverted_items.append(f"{sale_item.item_name} (+{sale_item.quantity})")
-                except InventoryItem.DoesNotExist:
-                    pass
+                inventory_item = sale_item.inventory_item
+                if inventory_item is None:
+                    continue
+
+                inventory_item = InventoryItem.objects.select_for_update().get(pk=inventory_item.pk)
+                inventory_item.quantity_in_stock += sale_item.quantity
+                inventory_item.save()
+                reverted_items.append(f"{sale_item.item_name} (+{sale_item.quantity})")
             
             messages.success(
                 request, 
                 f'Receipt #{receipt.receipt_number} has been voided. Restored stock: {", ".join(reverted_items)}.'
             )
     return redirect('receipt_history')
-
-
-@cashier_required
-def complete_transaction(request):
-    if request.method == "POST":
-        cart = request.session.get('cart', [])
-        
-        total = sum(item['price'] * item['qty'] for item in cart)
-
-        sale = Sale.objects.create(
-            total_amount=total,
-            created_at=timezone.now()
-        )
-
-        for item in cart:
-            SaleItem.objects.create(
-                sale=sale,
-                item_name=item['name'],
-                quantity=item['qty'],
-                price=item['price']
-            )
-
-        request.session['cart'] = []
-
-        return redirect('cashier')
 
 
 @admin_required
@@ -460,6 +440,8 @@ def daily_report(request, year=None, month=None, day=None):
         'sales': sales, # keep all sales for audit logs
         'total': total,
         'report_date': report_date,
+        'is_monitor': get_request_role(request) == 'monitor',
+        'can_modify_reports': get_request_role(request) != 'monitor',
         'transaction_count': active_sales.count(),
         'total_items_sold': total_items_sold,
         'best_sellers': best_sellers,
@@ -538,6 +520,8 @@ def monthly_report(request, year=None, month=None):
         'month': report_month,
         'year': report_year,
         'month_name': month_name,
+        'is_monitor': get_request_role(request) == 'monitor',
+        'can_modify_reports': get_request_role(request) != 'monitor',
         'transaction_count': active_sales.count(),
         'total_items_sold': total_items_sold,
         'best_sellers': best_sellers,
@@ -561,12 +545,12 @@ def void_daily_report(request):
                 sale.is_voided = True
                 sale.save(update_fields=['is_voided'])
                 for sale_item in sale.saleitem_set.all():
-                    try:
-                        inventory_item = InventoryItem.objects.select_for_update().get(item_name=sale_item.item_name)
-                        inventory_item.quantity_in_stock += sale_item.quantity
-                        inventory_item.save()
-                    except InventoryItem.DoesNotExist:
-                        pass
+                    inventory_item = sale_item.inventory_item
+                    if inventory_item is None:
+                        continue
+                    inventory_item = InventoryItem.objects.select_for_update().get(pk=inventory_item.pk)
+                    inventory_item.quantity_in_stock += sale_item.quantity
+                    inventory_item.save()
                 count += 1
         
         messages.success(request, f'Successfully voided {count} sales records for today and restored stock.')
@@ -592,12 +576,12 @@ def void_monthly_report(request):
                 sale.is_voided = True
                 sale.save(update_fields=['is_voided'])
                 for sale_item in sale.saleitem_set.all():
-                    try:
-                        inventory_item = InventoryItem.objects.select_for_update().get(item_name=sale_item.item_name)
-                        inventory_item.quantity_in_stock += sale_item.quantity
-                        inventory_item.save()
-                    except InventoryItem.DoesNotExist:
-                        pass
+                    inventory_item = sale_item.inventory_item
+                    if inventory_item is None:
+                        continue
+                    inventory_item = InventoryItem.objects.select_for_update().get(pk=inventory_item.pk)
+                    inventory_item.quantity_in_stock += sale_item.quantity
+                    inventory_item.save()
                 count += 1
         
         messages.success(request, f'Successfully voided {count} sales records for {today.strftime("%B %Y")} and restored stock.')
@@ -677,15 +661,15 @@ def generate_receipt(request, sale_id):
     if hasattr(sale, 'receipt'):
         receipt = sale.receipt
     else:
-        # Create new receipt
-        receipt = Receipt.objects.create(
-            sale=sale,
-            receipt_number=Receipt.generate_receipt_number(),
-            cashier_name='Cashier',
-            payment_method='Cash',
-            cash_received=sale.total_amount,
-            change_amount=0,
-        )
+        with transaction.atomic():
+            receipt = Receipt.objects.create(
+                sale=sale,
+                receipt_number=Receipt.generate_receipt_number(),
+                cashier_name='Cashier',
+                payment_method='Cash',
+                cash_received=sale.total_amount,
+                change_amount=0,
+            )
     
     # Get sale items with calculated subtotals
     sale_items = SaleItem.objects.filter(sale=sale)

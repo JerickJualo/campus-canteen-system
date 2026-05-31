@@ -55,7 +55,7 @@ class CanteenSystemTests(TestCase):
         self.assertRedirects(response, reverse('cashier'))
 
     def test_admin_full_access(self):
-        """Admin users should have access to inventory/reports but be redirected from cashier counter."""
+        """Admin users should have access to inventory, reports, and the cashier counter."""
         self.client.login(username='admin', password='admin123')
 
         # Access inventory dashboard
@@ -66,9 +66,9 @@ class CanteenSystemTests(TestCase):
         response = self.client.get(reverse('daily_report'))
         self.assertEqual(response.status_code, 200)
 
-        # Access cashier: Redirected to inventory dashboard
+        # Access cashier: Allowed
         response = self.client.get(reverse('cashier'))
-        self.assertRedirects(response, reverse('inventory_dashboard'))
+        self.assertEqual(response.status_code, 200)
 
     def test_checkout_and_void_flow(self):
         """Test transaction checkout, stock deduction, void logic, and stock restoration."""
@@ -173,19 +173,24 @@ class MonitorRoleTests(TestCase):
         response = self.client.get(reverse('monitor_dashboard'))
         self.assertRedirects(response, reverse('cashier'))
 
-    def test_monitor_access_redirects(self):
-        """Monitor users accessing standard cashier or admin paths should be redirected to monitor_dashboard."""
+    def test_monitor_read_only_access(self):
+        """Monitor users should view approved inventory and report pages only."""
         self.client.login(username='monitor', password='monitor123')
 
-        # Access inventory list
         response = self.client.get(reverse('inventory_list'))
-        self.assertRedirects(response, reverse('monitor_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Add Item')
+        self.assertNotContains(response, 'Multi-item Restock')
 
-        # Access daily reports
+        response = self.client.get(reverse('inventory_history'))
+        self.assertEqual(response.status_code, 200)
+
         response = self.client.get(reverse('daily_report'))
-        self.assertRedirects(response, reverse('monitor_dashboard'))
+        self.assertEqual(response.status_code, 200)
 
-        # Access cashier Counter
+        response = self.client.get(reverse('monthly_report'))
+        self.assertEqual(response.status_code, 200)
+
         response = self.client.get(reverse('cashier'))
         self.assertRedirects(response, reverse('monitor_dashboard'))
 
@@ -199,5 +204,17 @@ class MonitorRoleTests(TestCase):
             'payment_method': 'Cash',
             'cash': '100.00'
         })
+        self.assertRedirects(response, reverse('monitor_dashboard'))
+
+        response = self.client.post(reverse('add_inventory_item'), {
+            'item_name': 'Blocked Item',
+            'category': 'Dish',
+            'unit_price': '10.00',
+            'quantity_in_stock': '5',
+            'minimum_stock_level': '1',
+        })
+        self.assertRedirects(response, reverse('monitor_dashboard'))
+
+        response = self.client.post(reverse('void_daily_report'))
         self.assertRedirects(response, reverse('monitor_dashboard'))
 

@@ -587,6 +587,9 @@
                 </a>
                 
                 {% if user.is_staff or user.is_superuser or user.profile.role == 'admin' %}
+                <a href="/cashier/" class="sidebar-link" id="link-cashier">
+                    Cashier Desk
+                </a>
                 <a href="/inventory/" class="sidebar-link" id="link-inventory">
                     Inventory
                 </a>
@@ -599,6 +602,18 @@
                 {% elif user.profile.role == 'monitor' %}
                 <a href="/cashier/monitor/" class="sidebar-link" id="link-monitor">
                     Monitor Counter
+                </a>
+                <a href="/inventory/list/" class="sidebar-link" id="link-inventory-list">
+                    Inventory List
+                </a>
+                <a href="/inventory/history/" class="sidebar-link" id="link-inventory-history">
+                    Inventory History
+                </a>
+                <a href="/cashier/reports/daily/" class="sidebar-link" id="link-daily-report">
+                    Daily Sales Report
+                </a>
+                <a href="/cashier/reports/monthly/" class="sidebar-link" id="link-monthly-report">
+                    Monthly Sales Report
                 </a>
                 {% else %}
                 <a href="/cashier/" class="sidebar-link" id="link-cashier">
@@ -680,7 +695,11 @@
                 'link-reports': /^\/cashier\/reports/,
                 'link-users': /^\/accounts\/manage/,
                 'link-monitor': /^\/cashier\/monitor/,
-                'link-cashier': /^\/cashier$/,
+                'link-inventory-list': /^\/inventory\/list/,
+                'link-inventory-history': /^\/inventory\/history/,
+                'link-daily-report': /^\/cashier\/reports\/daily/,
+                'link-monthly-report': /^\/cashier\/reports\/monthly/,
+                'link-cashier': /^\/cashier\/?$/,
                 'link-developers': /^\/developers/
             };
             

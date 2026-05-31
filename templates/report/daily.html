@@ -12,7 +12,7 @@
         </div>
         <div class="sales-report-actions">
             <a class="btn btn-muted" href="{% url 'daily_report_history' %}">Daily History</a>
-            {% if user.is_staff or user.is_superuser %}
+            {% if can_modify_reports %}
                 {% if sales.count > 0 %}
                 <form action="{% url 'void_daily_report' %}" method="post" style="display: inline;" onsubmit="return confirmVoidDaily()">
                     {% csrf_token %}

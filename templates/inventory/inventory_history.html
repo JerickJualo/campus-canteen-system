@@ -9,9 +9,13 @@
             <p class="history-subtitle">Review restock activity and stock changes over time.</p>
         </div>
         <div class="history-actions">
+            {% if not is_monitor %}
             <a href="{% url 'inventory_dashboard' %}" class="btn btn-muted">Dashboard</a>
+            {% endif %}
             <a href="{% url 'inventory_list' %}" class="btn btn-muted">Inventory List</a>
+            {% if not is_monitor %}
             <a href="{% url 'multi_item_restock' %}" class="btn btn-primary">Multi-item Restock</a>
+            {% endif %}
         </div>
     </div>
 

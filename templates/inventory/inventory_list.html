@@ -9,11 +9,17 @@
             <p class="inventory-subtitle">Manage canteen items, stock levels, and restocking actions.</p>
         </div>
         <div class="inventory-actions">
+            {% if not is_monitor %}
             <a href="{% url 'inventory_dashboard' %}" class="btn btn-muted">Dashboard</a>
+            {% endif %}
             <a href="{% url 'inventory_history' %}" class="btn btn-muted">History</a>
+            {% if not is_monitor %}
             <a href="{% url 'multi_item_restock' %}" class="btn btn-primary">Multi-item Restock</a>
+            {% endif %}
             <a href="{% url 'inventory_print_checklist' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-muted">Print Stock Check</a>
+            {% if not is_monitor %}
             <a href="{% url 'add_inventory_item' %}" class="btn btn-success">Add Item</a>
+            {% endif %}
         </div>
     </div>
 
@@ -79,7 +85,9 @@
                     <th>Unit Price</th>
                     <th>Stock</th>
                     <th>Status</th>
+                    {% if not is_monitor %}
                     <th>Actions</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody>
@@ -110,15 +118,17 @@
                                 <span class="badge badge-ok">Available</span>
                             {% endif %}
                         </td>
+                        {% if not is_monitor %}
                         <td>
                             <a href="{% url 'restock_inventory_item' item.pk %}" class="action-link">Restock</a>
                             <a href="{% url 'edit_inventory_item' item.pk %}" class="action-link">Edit</a>
                             <a href="{% url 'delete_inventory_item' item.pk %}" class="action-link danger">Delete</a>
                         </td>
+                        {% endif %}
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="6" class="empty-state">No inventory items match the current filters.</td>
+                        <td colspan="{% if is_monitor %}5{% else %}6{% endif %}" class="empty-state">No inventory items match the current filters.</td>
                     </tr>
                 {% endfor %}
             </tbody>

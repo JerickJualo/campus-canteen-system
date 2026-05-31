@@ -12,7 +12,7 @@
         </div>
         <div class="sales-report-actions">
             <a class="btn btn-muted" href="{% url 'monthly_report_history' %}">Monthly History</a>
-            {% if user.is_staff or user.is_superuser %}
+            {% if can_modify_reports %}
                 {% if sales.count > 0 %}
                 <form action="{% url 'void_monthly_report' %}" method="post" style="display: inline;" onsubmit="return confirmVoidMonthly()">
                     {% csrf_token %}

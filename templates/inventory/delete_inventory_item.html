@@ -15,7 +15,7 @@
 
     <div class="delete-container">
         <p class="strong-value">Are you sure you want to delete {{ item.item_name }}?</p>
-        <p class="muted">This item will be removed from the inventory list.</p>
+        <p class="muted">This item will be removed only if it has no sales or restock history. Items with history are kept for audit accuracy.</p>
         <form method="post">
             {% csrf_token %}
             <div class="form-actions center-actions">

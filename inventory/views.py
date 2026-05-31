@@ -11,6 +11,12 @@ from .models import CATEGORY_CHOICES, Category, InventoryItem, RestockHistory
 from accounts.decorators import admin_required
 
 
+def get_request_role(request):
+    if request.user.is_authenticated and hasattr(request.user, 'profile'):
+        return request.user.profile.role
+    return 'cashier'
+
+
 def get_restock_user(request):
     if request.user.is_authenticated:
         return request.user
@@ -150,6 +156,7 @@ def inventory_history(request):
     return render(request, 'inventory/inventory_history.html', {
         'history': history,
         'categories': get_category_names(),
+        'is_monitor': get_request_role(request) == 'monitor',
     })
 
 def get_filtered_inventory_items(request):
@@ -205,10 +212,12 @@ def inventory_list(request):
     items, filter_context = get_filtered_inventory_items(request)
     categories = get_category_names()
     summary = get_inventory_summary()
+    is_monitor = get_request_role(request) == 'monitor'
 
     return render(request, 'inventory/inventory_list.html', {
         'items': items,
         'categories': categories,
+        'is_monitor': is_monitor,
         **summary,
         **filter_context,
     })
@@ -402,6 +411,13 @@ def edit_inventory_item(request, pk):
 def delete_inventory_item(request, pk):
     item = get_object_or_404(InventoryItem, pk=pk)
     if request.method == 'POST':
+        if item.sale_items.exists() or item.restock_history.exists():
+            messages.error(
+                request,
+                f'{item.item_name} cannot be deleted because it has sales or restock history. Set its stock to 0 instead.'
+            )
+            return redirect('inventory_list')
+
         item_name = item.item_name
         item.delete()
         messages.success(request, f'{item_name} was deleted successfully.')

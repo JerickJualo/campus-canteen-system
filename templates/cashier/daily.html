@@ -19,7 +19,7 @@
             <div class="summary-value">PHP {{ total_sales|floatformat:2 }}</div>
         </div>
         <div class="summary-card">
-            <div class="summary-label">Number of Orders</div>
+            <div class="summary-label">Transactions</div>
             <div class="summary-value">{{ total_orders }}</div>
         </div>
         <div class="summary-card">
@@ -32,7 +32,7 @@
         <table class="inventory-table">
             <thead>
                 <tr>
-                    <th>Order</th>
+                    <th>Transaction</th>
                     <th>Total Amount</th>
                     <th>Date</th>
                 </tr>
@@ -46,7 +46,7 @@
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="3" class="empty-state">No orders found today.</td>
+                        <td colspan="3" class="empty-state">No transactions found today.</td>
                     </tr>
                 {% endfor %}
             </tbody>

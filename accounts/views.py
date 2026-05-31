@@ -14,44 +14,7 @@ class LoginForm(forms.Form):
         'class': 'form-input',
     }))
 
-def seed_default_users():
-    """Seed default admin and cashier accounts if they do not exist in the database, and verify profile roles."""
-    # Seed Admin: admin / admin123
-    if not User.objects.filter(username='admin').exists():
-        admin_user = User.objects.create_superuser(
-            username='admin',
-            email='admin@campus.edu',
-            password='admin123'
-        )
-        if hasattr(admin_user, 'profile'):
-            admin_user.profile.role = 'admin'
-            admin_user.profile.save()
-    else:
-        admin_user = User.objects.get(username='admin')
-        if hasattr(admin_user, 'profile') and admin_user.profile.role != 'admin':
-            admin_user.profile.role = 'admin'
-            admin_user.profile.save()
-
-    # Seed Cashier: cashier / cashier123
-    if not User.objects.filter(username='cashier').exists():
-        cashier_user = User.objects.create_user(
-            username='cashier',
-            email='cashier@campus.edu',
-            password='cashier123'
-        )
-        if hasattr(cashier_user, 'profile'):
-            cashier_user.profile.role = 'cashier'
-            cashier_user.profile.save()
-    else:
-        cashier_user = User.objects.get(username='cashier')
-        if hasattr(cashier_user, 'profile') and cashier_user.profile.role != 'cashier':
-            cashier_user.profile.role = 'cashier'
-            cashier_user.profile.save()
-
 def login_view(request):
-    # Ensure default users are seeded on loading/posting the login screen
-    seed_default_users()
-    
     if request.user.is_authenticated:
         role = 'cashier'
         if hasattr(request.user, 'profile'):
